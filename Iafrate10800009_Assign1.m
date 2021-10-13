@@ -163,27 +163,31 @@ clearvars; close all; clc
 x0 = [1;1];
 tspan = [0 1];
 
-alfa = linspace(pi, 0,300);
+alfa = linspace(pi, 0,500);
 x_an = @(a) expm(A(a))*x0;        % Final time is t=1, no need to specify it
 tol = [1e-3 1e-4 1e-5 1e-6];
 
 for i=1:length(alfa)
  lambdas(i) = max(eig(A(alfa(i))));
 end
-% opts = optimset('Display','Iter','MaxFunEvals',10);
+
+algor = 4;      % RK4 selector
 figure()
 hold on
 axis equal
 for j=1:length(tol)
     for k=1:length(alfa)
         a = alfa(k);
-        h(k) = fzero(@(x) norm(wrapper(@(t,y) A(a)*y,tspan,x0,x) ...
+        h(k) = fzero(@(x) norm(wrapper(@(t,y) A(a)*y,tspan,x0,abs(x),algor) ...
                 - x_an(a),inf) - tol(j),0.5);
     end
-    plot(h.*lambdas)
+    hl = abs(h).*lambdas;
+    plot([real(hl) flip(real(hl))],[imag(hl) -flip(imag(hl))])
+    legend_entries{j}=sprintf("tol=%0.0e",tol(j));
 
 end
 
+legend(legend_entries{:})
 
 %% Ex 6
 clearvars; close all; clc
@@ -300,96 +304,96 @@ grid on
 %% Functions
 function [root,fevals] = bisection(f,a,b,Tol)
 
-    %Initialization
+%Initialization
+x = (a+b)/2;
+fevals = 0;
+
+while abs(b-a)/2>=Tol
     x = (a+b)/2;
-    fevals = 0;
-
-    while abs(b-a)/2>=Tol 
-        x = (a+b)/2;
-
-        if f(x)*f(a)<0
-            b = x;
-        else
-            a = x;
-        end
-        
-        fevals = fevals + 1;
-        
+    
+    if f(x)*f(a)<0
+        b = x;
+    else
+        a = x;
     end
-    root = x;
+    
+    fevals = fevals + 1;
+    
+end
+root = x;
 end
 
 function [root,fevals] = secant(f,x0,x1,Tol)
-    xk = x1;
-    xk_1 = x0;
+xk = x1;
+xk_1 = x0;
+
+fevals = 2;
+
+while abs(xk-xk_1)>=Tol
+    fk = f(xk);
+    fk_1 = f(xk_1);
     
-    fevals = 2;
+    xk1 = xk - (xk - xk_1)*fk/(fk - fk_1);
+    fevals = fevals + 2;
     
-    while abs(xk-xk_1)>=Tol
-        fk = f(xk);
-        fk_1 = f(xk_1);
-        
-        xk1 = xk - (xk - xk_1)*fk/(fk - fk_1);
-        fevals = fevals + 2;
-        
-        xk_1=xk;
-        xk = xk1; 
-    end
-    root = xk1;
+    xk_1=xk;
+    xk = xk1;
+end
+root = xk1;
 end
 
 function [root,fevals] = regulafalsi(f,a,b,Tol)
+
+%Initialization
+fevals = 0;
+
+while abs(b-a)/2>=Tol
+    fa = f(a);
+    fb = f(b);
+    x = b - (b-a)*fb/(fb-fa);
+    fx = f(x);
     
-    %Initialization
-    fevals = 0;
+    if fx>0
+        b = x;
         
-    while abs(b-a)/2>=Tol 
-        fa = f(a);
-        fb = f(b);
-        x = b - (b-a)*fb/(fb-fa);
-        fx = f(x);
-        
-        if fx>0
-            b = x;
-            
-        else
-            a = x;
-            
-        end
-        
-        fevals = fevals + 3;
+    else
+        a = x;
         
     end
     
-    root = x;
+    fevals = fevals + 3;
+    
+end
+
+root = x;
 end
 
 function [roots,fevals] = newton_analytical(fun,x0,J,Tol)
-    x = x0;
+x = x0;
+f = fun(x);
+fevals = 0;
+Nmax = 1000;
+
+while abs(f)>=Tol % && fevals<Nmax
     f = fun(x);
-    fevals = 0;
-    Nmax = 1000;
-    
-    while abs(f)>=Tol % && fevals<Nmax
-        f = fun(x);
-        dX = -J(x)\f;
-        x = x +dX;
-        fevals = fevals+1;
-    end
-    roots = x;
+    dX = -J(x)\f;
+    x = x +dX;
+    fevals = fevals+1;
+end
+roots = x;
 end
 
 function [roots,fevals] = newton_FD(fun,x0,Tol)
-    x = x0;
+x = x0;
+f = fun(x);
+fevals = 0;
+while abs(f)>=Tol
     f = fun(x);
-    fevals = 0;
-    while abs(f)>=Tol
-        f = fun(x);
-        invJ = inv(FD_Jacobian(x,fun));     % HOW CAN I AVOID COMPUTING THE INVERSE?
-        x = x - invJ*f;                     
-        fevals = fevals+1;
-    end
-    roots = x;
+    invJ = inv(FD_Jacobian(x,fun));     % HOW CAN I AVOID COMPUTING THE INVERSE?
+    x = x - invJ*f;
+    fevals = fevals+1;
+end
+roots = x;
 end
 
 function J = FD_Jacobian(X,f)
@@ -512,7 +516,7 @@ end
 end
 
 function A_A = A(alfa)
-    A_A =[0 1; -1 2*cos(alfa)];
+A_A =[0 1; -1 2*cos(alfa)];
 end
 
 function F = ffwd(A,h,algor,th)
@@ -523,24 +527,24 @@ function F = ffwd(A,h,algor,th)
 %   + 2 RK2
 %   + 4 RK4
 
-    [~,n]=size(A);
-    I = eye(n);
-    
-    switch algor
-        case 1      % Forward euler (RK1)
-            F = I + h*A;
-            
-        case 2      % Runge-Kutta (RK2)
-            F = I + h*A + 0.5*(h*A)^2;
-            
-        case 4      % Runge-Kutta (RK4)
-            F =  I + A*h + (A*h)^2/2 + (A*h)^3/6 + (A*h)^4/24;
-            
-        case 5      % θ-methods
-            F = inv(I - A*(1-th)*h + 0.5*(A*(1-th)*h)^2)*...
-                (I + A*th*h + 0.5*(A*th*h)^2);
-            
-    end
+[~,n]=size(A);
+I = eye(n);
+
+switch algor
+    case 1      % Forward euler (RK1)
+        F = I + h*A;
+        
+    case 2      % Runge-Kutta (RK2)
+        F = I + h*A + 0.5*(h*A)^2;
+        
+    case 4      % Runge-Kutta (RK4)
+        F =  I + A*h + (A*h)^2/2 + (A*h)^3/6 + (A*h)^4/24;
+        
+    case 5      % θ-methods
+        F = inv(I - A*(1-th)*h + 0.5*(A*(1-th)*h)^2)*...
+            (I + A*th*h + 0.5*(A*th*h)^2);
+        
+end
 end
 
 function [Rhat,X,Y]=easystability(algorithm,th)
@@ -566,7 +570,10 @@ end
 Rhat = abs(R);
 end
 
-function z_end=wrapper(f,tspan,x0,h)
-    Z = RK4(f,tspan,x0,h);
-    z_end=Z(:,end);
+function z_end=wrapper(f,tspan,x0,h,algor)
+switch algor
+    case 4
+        Z = RK4(f,tspan,x0,h);
+end
+z_end=Z(:,end);
 end
