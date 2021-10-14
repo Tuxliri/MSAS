@@ -163,32 +163,44 @@ clearvars; close all; clc
 x0 = [1;1];
 tspan = [0 1];
 
-alfa = linspace(pi, 0,500);
+alfa = linspace(pi, 0,300);
 x_an = @(a) expm(A(a))*x0;        % Final time is t=1, no need to specify it
 tol = [1e-3 1e-4 1e-5 1e-6];
+
+LineSpec = {'LineWidth',2};
+colormap winter
 
 for i=1:length(alfa)
  lambdas(i) = max(eig(A(alfa(i))));
 end
 
-algor = 4;      % RK4 selector
-figure()
-hold on
-axis equal
-for j=1:length(tol)
-    for k=1:length(alfa)
-        a = alfa(k);
-        h(k) = fzero(@(x) norm(wrapper(@(t,y) A(a)*y,tspan,x0,abs(x),algor) ...
-                - x_an(a),inf) - tol(j),0.5);
+guess = [tol;
+    0.01 0.01 0.01 0.01;
+    0.5 0.5 0.5 0.5];
+
+
+for i=2:3
+    figure(i)
+    hold on
+    axis equal
+    for j=1:length(tol)
+        for k=1:length(alfa)
+            a = alfa(k);
+            h(k) = fzero(@(x) norm(wrapper(@(t,y) A(a)*y,tspan,x0,abs(x),i) ...
+                    - x_an(a),inf) - tol(j),guess(i,j));
+        end
+        hl = abs(h).*lambdas;
+        plot([real(hl) flip(real(hl))],...
+            [imag(hl) -flip(imag(hl))],LineSpec{:})
+        legend_entries{j}=sprintf("tol=%0.0e",tol(j));
+
     end
-    hl = abs(h).*lambdas;
-    plot([real(hl) flip(real(hl))],[imag(hl) -flip(imag(hl))])
-    legend_entries{j}=sprintf("tol=%0.0e",tol(j));
+    grid on
+    xlabel('$Re\{h\lambda\}$','Interpreter','latex')
+    ylabel('$Im\{h\lambda\}$','Interpreter','latex')
 
+    legend(legend_entries{:})
 end
-
-legend(legend_entries{:})
-
 %% Ex 6
 clearvars; close all; clc
 
@@ -572,7 +584,11 @@ end
 
 function z_end=wrapper(f,tspan,x0,h,algor)
 switch algor
-    case 4
+    case 1
+        Z = RK1(f,tspan,x0,h);
+    case 2
+        Z = RK2(f,tspan,x0,h);
+    case 3
         Z = RK4(f,tspan,x0,h);
 end
 z_end=Z(:,end);
