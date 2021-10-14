@@ -163,12 +163,11 @@ clearvars; close all; clc
 x0 = [1;1];
 tspan = [0 1];
 
-alfa = linspace(pi, 0,300);
+alfa = linspace(pi, 0,50);
 x_an = @(a) expm(A(a))*x0;        % Final time is t=1, no need to specify it
 tol = [1e-3 1e-4 1e-5 1e-6];
 
 LineSpec = {'LineWidth',2};
-colormap winter
 
 for i=1:length(alfa)
  lambdas(i) = max(eig(A(alfa(i))));
@@ -179,7 +178,7 @@ guess = [tol;
     0.5 0.5 0.5 0.5];
 
 
-for i=2:3
+for i=1:3
     figure(i)
     hold on
     axis equal
