@@ -42,9 +42,11 @@ t_FD = toc();
 
 % Compute exact roots
 syms x y real
-[solx,soly] = solve(x^2-x-y==0,x^2/16+y^2-1);
+[solx,soly] = solve(x^2-x-y==0,x^2/16+y^2-1==0);
 
 % Compare the two solutions
+error_analytical = norm(vpa([solx(1);soly(1)])-roots,inf)
+error_FD = norm(vpa([solx(1);soly(1)])-roots1,inf)
 
 %% Ex 3
 clearvars; close all; clc
@@ -68,9 +70,11 @@ for i=1:length(h)
     [sol,~,times] = RK2(f,tspan,x0,h(i));
     solRK2(i) = sol(:,end);
     plot(times,sol)
+    errorRK2(i) = max(abs(sol-x_an(0:h(i):tspan(end))));
     g = @() RK2(f,tspan,x0,h(i));
     timeRK2(i) = timeit(g);
 end
+
 plot(0:0.5:2,x_an(0:0.5:2))
 grid on
 legend('h=0.5','h=0.2','h=0.05','h=0.01','analytical')
@@ -86,6 +90,7 @@ for i = 1:length(h)
     [sol,fevals(i),times] = RK4(f,tspan,x0,h(i));
     solRK4(i) = sol(:,end);
     plot(times,sol)
+    errorRK4(i) = max(abs(sol-x_an(0:h(i):tspan(end))));
     g = @() RK4(f,tspan,x0,h(i));
     timeRK4(i) = timeit(g);
 end
@@ -94,11 +99,11 @@ grid on
 legend('h=0.5','h=0.2','h=0.05','h=0.01','analytical')
 
 
-errorRK4 = abs(solRK4-x_an(2));
+% errorRK4 = abs(solRK4-x_an(2));
 
 % Plotting
 figure(3)
-errorRK2 = abs(solRK2-x_an(2));
+% errorRK2 = abs(solRK2-x_an(2));
 fig_RK2=loglog(timeRK2,errorRK2);
 fig_RK2.LineWidth=2;
 grid on
@@ -118,44 +123,49 @@ clearvars; close all; clc
 % Request number 3
 alfa = linspace(pi, 0,100);
 
-algorithm = 4;             %  Algorithm selector for ffwd fcn. (2 = RK2)
+algorithm = [2 4];             %  Algorithm selector for ffwd fcn. (2 = RK2)
 
 % Determine the stepsize to have discrete eigenvalues on the unitary circle
 h = zeros(length(alfa),1);
-problems = [];
+hs = [0.5 0.2 0.05 0.01];   % Specified timesteps of exercise 3
 
-for i = 1:length(alfa)
-    a = alfa(i);
-    try
-        h(i) = fzero(@(x) max(abs(eig(ffwd(A(a),x,algorithm))))-1,5);
-        
-    catch mess
-        warning(mess.message)
+for k = 1:2
+    figure(k)
+    for i = 1:length(alfa)
+        a = alfa(i);
+        try
+            h(i) = fzero(@(x) max(abs(eig(ffwd(A(a),x,algorithm(k)))))-1,5);
+
+        catch mess
+            warning(mess.message)
+        end
     end
+
+    % Compute continous system eigenvalues
+    lambdas = zeros(length(alfa),1);
+
+    for i=1:length(alfa)
+     lambdas(i) = max(eig(A(alfa(i))));
+    end
+
+    hl = h.*lambdas;
+    hold on
+    X=[real(hl); flip(real(hl))];
+    Y = [imag(hl); -flip(imag(hl))];
+    plot(X,Y)
+    grid on
+    axis equal
+    axis padded
+    
+    fill(X,Y, [0.8 0.8 0.8]) ;
+
+    xlabel('$Re\{h\lambda\}$','Interpreter','latex')
+    ylabel('$Im\{h\lambda\}$','Interpreter','latex')
+
+    % Given that lambda = 1
+    
+    plot(hs,0,'*r')
 end
-
-% Compute continous system eigenvalues
-lambdas = zeros(length(alfa),1);
-
-for i=1:length(alfa)
- lambdas(i) = max(eig(A(alfa(i))));
-end
-
-hlambda = h.*lambdas;
-plot(hlambda)
-hold on
-plot(real(hlambda),-imag(hlambda))
-grid on
-axis equal
-
-fill(real(hlambda),imag(hlambda), [0.8 0.8 0.8]) ;
-fill(real(hlambda),-imag(hlambda), [0.8 0.8 0.8]) ;
-hold on
-
-% Given that lambda = 1
-h = [0.5 0.2 0.05 0.01];
-
-plot(h,'*')
 
 %% Ex 5
 clearvars; close all; clc
@@ -200,6 +210,7 @@ for i=1:3
 
     legend(legend_entries{:})
 end
+
 %% Ex 6
 clearvars; close all; clc
 
@@ -292,6 +303,7 @@ xlabel('$Re\{h\lambda\}$','Interpreter','latex')
 ylabel('$Im\{h\lambda\}$','Interpreter','latex')
 
 %% Ex 7
+
 clearvars; close all; clc
 B = [-180.5 219.5; 179.5 -220.5];       % Stiff system
 
