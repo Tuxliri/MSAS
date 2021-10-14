@@ -203,19 +203,14 @@ end
 %% Ex 6
 clearvars; close all; clc
 
-% alfa vectors
+% alfa angles vector
 alfa = linspace(pi, 0, 100);
 
-theta = [0.1 0.3 0.7 0.9];
-% theta=0.4;
+% select the F operator of BI2
 algorithm = 5;
 
 % Compute continous system eigenvalues
 lambdas = zeros(length(alfa),1);
-
-figure()
-hold on
-LineSpecs = {'LineWidth',2};
 
 for i=1:length(alfa)
  lambdas(i) = max(eig(A(alfa(i))));
@@ -223,7 +218,46 @@ end
 
 h = zeros(length(alfa),1);
 
-% plot the stability region
+% Req.2 plot the stability region of BI2 for θ = 0.4
+th=0.4;
+
+for i=1:length(alfa)
+    a=alfa(i);
+    
+    try
+        g = @(x) max(abs(eig(ffwd(A(a),x,algorithm,th))))-1;
+        h(i) = fzero(g,10);
+        
+    catch mess
+        warning(mess.message)
+    end
+    
+end
+
+figure()
+hold on
+LineSpecs = {'LineWidth',2};
+
+hl = abs(h).*lambdas;
+X=[real(hl); flip(real(hl))];
+Y = [imag(hl); -flip(imag(hl))];
+plot(X,Y,LineSpecs{:})
+
+legend_entries = {'$BI2_{0.4}$'};
+grid on
+axis equal
+axis padded
+legend(legend_entries{:},'Interpreter','latex','Location','best')
+
+xlabel('$Re\{h\lambda\}$','Interpreter','latex')
+ylabel('$Im\{h\lambda\}$','Interpreter','latex')
+
+% plot the stability region for θ = [0.1 0.3 0.7 0.9]
+theta = [0.1 0.3 0.7 0.9];
+
+figure()
+hold on
+
 for k = 1:length(theta)
     th=theta(k);
     
@@ -240,16 +274,22 @@ for k = 1:length(theta)
 
     end
 
-    hl = h.*lambdas;
-    X=[real(hl);  real(hl);];
-    Y = [ imag(hl);  -imag(hl); ];
+    hl = abs(h).*lambdas;
+    X=[real(hl); flip(real(hl))];
+    Y = [imag(hl); -flip(imag(hl))];
     plot(X,Y,LineSpecs{:})
+%     f = fill(X,Y,'r');
+%     set(f,'facealpha',.5)
 end
 
 legend_entries = {'$BI2_{0.1}$','$BI2_{0.3}$','$BI2_{0.7}$','$BI2_{0.9}$'};
 grid on
 axis equal
-legend(legend_entries{:},'Interpreter','latex')
+axis padded
+legend(legend_entries{:},'Interpreter','latex','Location','best')
+
+xlabel('$Re\{h\lambda\}$','Interpreter','latex')
+ylabel('$Im\{h\lambda\}$','Interpreter','latex')
 
 %% Ex 7
 clearvars; close all; clc
@@ -304,13 +344,19 @@ grid on
 hlambdas = h*eig(B);
 
 figure()
+
 hold on
 [R_BI2,X,Y] = easystability(5,theta);
-[a,figBI2] = contour(X,Y,-R_BI2,[-1 -1]);
+[~,figBI2] = contour(X,Y,-R_BI2,[-1 -1]);
+figBI2.LineWidth=1.5;
 
 R_RK4 = easystability(4);
-plot(real(hlambdas),imag(hlambdas),'*')
+[~,figRK4] = contour(X,Y,-R_RK4,[-1 -1],'k');
+figRK4.LineWidth=1.5;
+
+plot(real(hlambdas),imag(hlambdas),'*r')
 grid on
+axis padded
 
 %% Functions
 function [root,fevals] = bisection(f,a,b,Tol)
@@ -582,6 +628,8 @@ Rhat = abs(R);
 end
 
 function z_end=wrapper(f,tspan,x0,h,algor)
+% Wrapper function, returning the state at the final integration step
+
 switch algor
     case 1
         Z = RK1(f,tspan,x0,h);
