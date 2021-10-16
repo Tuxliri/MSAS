@@ -193,20 +193,25 @@ guess = [5*tol;
     0.5 0.5 0.5 0.5];
 
 
-for i=1:3
+for i=1:1
     figure(i)
     hold on
     axis equal
     for j=1:length(tol)
+        guess = 1e-4;
         for k=1:length(alfa)
             a = alfa(k);
-            
+            AA = A(a);
             if i==1
-                h(k) = fzero(@(x) norm(wrapper(@(t,y) A(a)*y,tspan,x0,abs(x),i) ...
-                        - x_an(a),inf) - tol(j),guess(i,j));
+                options = optimset('TolX',1e-1*tol(j));
+                
+                h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x0,abs(x),i) ...
+                    - x_an(a),inf)-tol(j),guess,options);
+                guess=h(k);
+                
             else
-                h(k) = fzero(@(x) norm(wrapper(@(t,y) A(a)*y,tspan,x0,abs(x),i) ...
-                        - x_an(a),inf) - tol(j),guess(i,j));
+                h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x0,abs(x),i) ...
+                    - x_an(a),inf) - tol(j),guess(i,j));
             end
         end
         hl = abs(h).*lambdas;
@@ -356,12 +361,12 @@ hold on
 plot(times,xx(1,:),times,xx(2,:))
 grid on
 
-% figure(2)
-% plot(times,analy(1,:))
-% hold on
-% % Numerical plot
-% plot(times,numerical(1,:))
-% grid on
+figure(2)
+plot(times,analy(1,:))
+hold on
+% Numerical plot
+plot(times,numerical(1,:))
+grid on
 
 % Eigenvalues of the dynamical system (stiff) have very different values
 hlambdas = h*eig(B);
@@ -369,7 +374,7 @@ hlambdas = h*eig(B);
 figure()
 
 hold on
-[R_BI2,X,Y] = easystability(5,0.9);
+[R_BI2,X,Y] = easystability(5,theta);
 [~,figBI2] = contour(X,Y,-R_BI2,[-1 -1]);
 figBI2.LineWidth=1.5;
 
@@ -380,6 +385,21 @@ figRK4.LineWidth=1.5;
 plot(real(hlambdas),imag(hlambdas),'*r')
 grid on
 axis padded
+%% TEST SECTION
+h=linspace(1e-7,5e-6,5);
+alfa = linspace(pi,0,10);
+alfa=pi/4
+funcval=zeros(length(h),length(alfa));
+for j=1:length(alfa)
+for i=1:length(h)
+    AA=A(alfa(j));
+    funcval(i,j)=norm(wrapper(@(t,y) AA*y,tspan,x0,h(i),1) ...
+                    - x_an(a),inf)-1e-6;
+end
+end
+plot(h,funcval)
+
+% surf(alfa,h,funcval)
 
 %% Functions
 function [root,fevals] = bisection(f,a,b,Tol)
@@ -621,7 +641,7 @@ switch algor
         F =  I + A*h + (A*h)^2/2 + (A*h)^3/6 + (A*h)^4/24;
         
     case 5      % θ-methods
-        F = inv(I - A*(1-th)*h + 0.5*(A*(1-th)*h)^2)*...
+        F = (I - A*(1-th)*h + 0.5*(A*(1-th)*h)^2)\...
             (I + A*th*h + 0.5*(A*th*h)^2);
         
 end
