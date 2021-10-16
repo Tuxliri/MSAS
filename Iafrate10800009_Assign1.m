@@ -19,7 +19,7 @@ tic
 [root_2, i_2] = regulafalsi(f,a,b,Tol);
 t_RF=toc();
 
-%% Ex 2 todo: how do we compute the accuracy??
+%% Ex 2 THERE IS ANOTHER ZERO YOU NEED TO FIND
 clearvars; close all; clc
 
 x = linspace(-2,2,100);
@@ -42,11 +42,11 @@ t_FD = toc();
 
 % Compute exact roots
 syms x y real
-[solx,soly] = solve(x^2-x-y==0,x^2/16+y^2-1==0);
+[solx,soly] = solve(x^2-x-y==0, x^2/16+y^2-1==0);
 
 % Compare the two solutions
-error_analytical = norm(vpa([solx(1);soly(1)])-roots,inf)
-error_FD = norm(vpa([solx(1);soly(1)])-roots1,inf)
+error_analytical = double(norm(vpa([solx(1);soly(1)])-roots,inf));
+error_FD = double(norm(vpa([solx(1);soly(1)])-roots1,inf));
 
 %% Ex 3
 clearvars; close all; clc
@@ -192,22 +192,29 @@ guess = [5*tol;
     0.01 0.01 0.01 0.01;
     0.5 0.5 0.5 0.5];
 
-
-for i=1:1
+tic
+for i=2:3
     figure(i)
     hold on
     axis equal
     for j=1:length(tol)
-        guess = 1e-4;
+%         guess = 1e-4;
         for k=1:length(alfa)
             a = alfa(k);
             AA = A(a);
             if i==1
                 options = optimset('TolX',1e-1*tol(j));
-                
+             
                 h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x0,abs(x),i) ...
                     - x_an(a),inf)-tol(j),guess,options);
-                guess=h(k);
+                
+                   
+                if isnan(h(k))
+                    guess=tol(j);
+                else
+                    guess=h(k);
+                end
+                
                 
             else
                 h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x0,abs(x),i) ...
@@ -226,6 +233,7 @@ for i=1:1
 
     legend(legend_entries{:})
 end
+t_EX5=toc()
 
 %% Ex 6
 clearvars; close all; clc
@@ -385,21 +393,6 @@ figRK4.LineWidth=1.5;
 plot(real(hlambdas),imag(hlambdas),'*r')
 grid on
 axis padded
-%% TEST SECTION
-h=linspace(1e-7,5e-6,5);
-alfa = linspace(pi,0,10);
-alfa=pi/4
-funcval=zeros(length(h),length(alfa));
-for j=1:length(alfa)
-for i=1:length(h)
-    AA=A(alfa(j));
-    funcval(i,j)=norm(wrapper(@(t,y) AA*y,tspan,x0,h(i),1) ...
-                    - x_an(a),inf)-1e-6;
-end
-end
-plot(h,funcval)
-
-% surf(alfa,h,funcval)
 
 %% Functions
 function [root,fevals] = bisection(f,a,b,Tol)
@@ -411,13 +404,16 @@ fevals = 0;
 while abs(b-a)/2>=Tol
     x = (a+b)/2;
     
-    if f(x)*f(a)<0
+    fa = f(a);
+    fx = f(x);
+    
+    if fx*fa<0
         b = x;
     else
         a = x;
     end
     
-    fevals = fevals + 1;
+    fevals = fevals + 2;
     
 end
 root = x;
@@ -427,7 +423,7 @@ function [root,fevals] = secant(f,x0,x1,Tol)
 xk = x1;
 xk_1 = x0;
 
-fevals = 2;
+fevals = 0;
 
 while abs(xk-xk_1)>=Tol
     fk = f(xk);
@@ -670,16 +666,16 @@ end
 Rhat = abs(R);
 end
 
-function z_end=wrapper(f,tspan,x0,h,algor)
+function x_end=wrapper(f,tspan,x0,h,algor)
 % Wrapper function, returning the state at the final integration step
 
 switch algor
     case 1
-        Z = RK1(f,tspan,x0,h);
+        xx = RK1(f,tspan,x0,h);
     case 2
-        Z = RK2(f,tspan,x0,h);
+        xx = RK2(f,tspan,x0,h);
     case 3
-        Z = RK4(f,tspan,x0,h);
+        xx = RK4(f,tspan,x0,h);
 end
-z_end=Z(:,end);
+x_end=xx(:,end);
 end
