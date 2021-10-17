@@ -3,58 +3,74 @@ clearvars; close all; clc
 
 f = @(x) cos(x) - x;
 fplot(f), grid on;
-a = 0;
-b = 1.5;
-Tol = 1e-8;
+a = 0.5;
+b = 1.1;
+accuracy = 8;       % Digits accuracy
+Tol = 10^-accuracy;
 
 tic
 [root,i] = bisection(f,a,b,Tol);
 t_BI = toc();
 
 tic
-[root_1,i_1] = secant(f,a,b,Tol);
+[root1,i_1] = secant(f,a,b,Tol);
 t_SEC = toc();
 
 tic
-[root_2, i_2] = regulafalsi(f,a,b,Tol);
+[root2, i_2] = regulafalsi(f,a,b,Tol);
 t_RF=toc();
 
-%% Ex 2 THERE IS ANOTHER ZERO YOU NEED TO FIND
+%% Ex 2 (FIX IT, NOT OK)
 clearvars; close all; clc
 
-x = linspace(-2,2,100);
-y = x;
-
+% Plot of the vector function
 f = @(x) [x(1).^2 - x(1) - x(2); x(1).^2/16 + x(2).^2 - 1];
+[X,Y] = meshgrid(-2:0.1:2,-2:0.1:2);
+U = X.^2 - X - Y;
+V =  X.^2/16 + Y.^2 - 1;
+quiver(X,Y,U,V)
+axis fill
 
+% Initial guesses for the zeros, from the plot
+x01 = [1;1];                                        
+x02 = [-1;1];
 
 J = @(x) [2*x(1)-1, -1; x(1)/8, 2*x(2)];           % Analytical Jacobian
-x0 = [1;1];
+
 Tol = 1e-8;
 
 tic
-[roots,fevals] = newton_analytical(f,x0,J,Tol);
+[roots(:,1),~] = newton_analytical(f,x01,J,Tol);
+[roots(:,2),~] = newton_analytical(f,x02,J,Tol);
 t_analytical = toc();
 
 tic
-[roots1,fevals1] = newton_FD(f,x0,Tol);
+[rootsFD(:,1),~] = newton_FD(f,x01,Tol);
+[rootsFD(:,2),~] = newton_FD(f,x02,Tol);
 t_FD = toc();
+
+tic
+[rootsCD(:,1),~] = newton_CD(f,x01,Tol);
+[rootsCD(:,2),~] = newton_CD(f,x02,Tol);
+t_CD = toc();
 
 % Compute exact roots
 syms x y real
-[solx,soly] = solve(x^2-x-y==0, x^2/16+y^2-1==0);
+[solx,soly] = solve(x^2-x-y==0, x^2/16 +y^2-1==0);
+SOL = double([solx';soly']);
 
 % Compare the two solutions
-error_analytical = double(norm(vpa([solx(1);soly(1)])-roots,inf));
-error_FD = double(norm(vpa([solx(1);soly(1)])-roots1,inf));
+error_an = vecnorm(roots-SOL);
+error_FD = vecnorm(rootsFD-SOL);
+error_CD = vecnorm(rootsCD-SOL);
 
 %% Ex 3
 clearvars; close all; clc
 
-f = @(t,x) x - t^2 + 1;
+f = @(t,x) x - t^2 + 1;     % Analytical solution
 x_an = @(t) t.^2 + 2*t +1 - 0.5*exp(t);
 tspan = [0 2];
-x0 = 0.5;
+x01 = 0.5;
 
 h = [0.5 0.2 0.05 0.01];
 
@@ -62,23 +78,33 @@ h = [0.5 0.2 0.05 0.01];
 solRK2 = zeros(size(h));
 timeRK2 = solRK2;
 
+% Setup plots style
+legend_options = {'Interpreter','latex','Location','best',...
+    'FontSize',12};
+label_options = {'Interpreter','latex','FontSize',14};
+
 figure (1)
 hold on
 
-% RK2 errors and timings
+% RK2 computations
 for i=1:length(h)
-    [sol,~,times] = RK2(f,tspan,x0,h(i));
+    [sol,~,times] = RK2(f,tspan,x01,h(i));
     solRK2(i) = sol(:,end);
-    plot(times,sol)
+    plot(times,sol,'--')
     errorRK2(i) = max(abs(sol-x_an(0:h(i):tspan(end))));
-    g = @() RK2(f,tspan,x0,h(i));
+    g = @() RK2(f,tspan,x01,h(i));
     timeRK2(i) = timeit(g);
 end
 
-plot(0:0.5:2,x_an(0:0.5:2))
+timesRK2 = tspan(1):0.5:tspan(2);
+
+plot(timesRK2,x_an(timesRK2),'LineWidth',1.2)
 grid on
-legend('h=0.5','h=0.2','h=0.05','h=0.01','analytical',...
-    'Location','southeast')
+
+legend_entries = {'h=0.5','h=0.2','h=0.05','h=0.01','analytical'};
+legend(legend_entries{:},legend_options{:})
+xlabel('$time [s]$',label_options{:})
+ylabel('$x_{RK2}(t)$',label_options{:})
 
 % RK4 errors and timings
 solRK4 = zeros(size(h));
@@ -88,35 +114,33 @@ figure(2)
 hold on
 for i = 1:length(h)
 
-    [sol,fevals(i),times] = RK4(f,tspan,x0,h(i));
+    [sol,fevals(i),times] = RK4(f,tspan,x01,h(i));
     solRK4(i) = sol(:,end);
-    plot(times,sol)
+    plot(times,sol,'--')
     errorRK4(i) = max(abs(sol-x_an(0:h(i):tspan(end))));
-    g = @() RK4(f,tspan,x0,h(i));
+    g = @() RK4(f,tspan,x01,h(i));
     timeRK4(i) = timeit(g);
 end
-plot(0:0.01:2,x_an(0:0.01:2))
+timesRK4 = tspan(1):0.01:tspan(2);
+plot(timesRK4,x_an(timesRK4),'LineWidth',1.2)
 grid on
-legend('h=0.5','h=0.2','h=0.05','h=0.01','analytical',...
-    'Location','southeast')
-
-
-% errorRK4 = abs(solRK4-x_an(2));
+legend(legend_entries{:},legend_options{:})
+xlabel('$time [s]$',label_options{:})
+ylabel('$x_{RK4}(t)$',label_options{:})
 
 % Plotting
 figure(3)
-% errorRK2 = abs(solRK2-x_an(2));
 fig_RK2=loglog(timeRK2,errorRK2);
 fig_RK2.LineWidth=2;
 grid on
-xlabel('Integration time [s]')
-ylabel('Solution error')
+xlabel('Integration time [s]',label_options{:})
+ylabel('Solution error',label_options{:})
 
 figure(4)
 fig_RK4=loglog(timeRK4,errorRK4);
 fig_RK4.LineWidth=2;
-xlabel('Integration time [s]')
-ylabel('Solution error')
+xlabel('Integration time [s]',label_options{:})
+ylabel('Solution error',label_options{:})
 grid on
 
 %% Ex 4 
@@ -172,14 +196,14 @@ for k = 1:2
     plot(hs,0,'*r')
 end
 
-%% Ex 5
+%% Ex 5 FIX THE RK1, case not running
 clearvars; close all; clc
 
-x0 = [1;1];
+x01 = [1;1];
 tspan = [0 1];
 
 alfa = linspace(pi, 0,50);
-x_an = @(a) expm(A(a))*x0;       % Final time is t=1, no need to specify it
+x_an = @(a) expm(A(a))*x01;       % Final time is t=1, no need to specify it
 tol = [1e-3 1e-4 1e-5 1e-6];
 
 LineSpec = {'LineWidth',2};
@@ -193,19 +217,19 @@ guess = [5*tol;
     0.5 0.5 0.5 0.5];
 
 tic
-for i=2:3
+for i=1:3
     figure(i)
     hold on
     axis equal
     for j=1:length(tol)
 %         guess = 1e-4;
+    options = optimset('TolX',1e-1*tol(j));
         for k=1:length(alfa)
             a = alfa(k);
             AA = A(a);
             if i==1
-                options = optimset('TolX',1e-1*tol(j));
-             
-                h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x0,abs(x),i) ...
+                
+                h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x01,abs(x),i) ...
                     - x_an(a),inf)-tol(j),guess,options);
                 
                    
@@ -217,7 +241,7 @@ for i=2:3
                 
                 
             else
-                h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x0,abs(x),i) ...
+                h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x01,abs(x),i) ...
                     - x_an(a),inf) - tol(j),guess(i,j));
             end
         end
@@ -329,16 +353,17 @@ ylabel('$Im\{h\lambda\}$','Interpreter','latex')
 %% Ex 7
 
 clearvars; close all; clc
-B = [-180.5 219.5; 179.5 -220.5];       % Stiff system
+B = [-180.5 219.5; 179.5 -220.5];       % System dynamics (Stiff system)
 
-x0 = [1;1];
+x01 = [1;1];
 tspan = [0 5];
 h = 0.1;
 
-xt = @(t) expm(B.*t)*x0;
+% Analytical solution
+xt = @(t) expm(B.*t)*x01;
 
 % RK4 integration (no bueno)
-numerical = RK4(@(t,x) B*x,tspan,x0,h);
+numerical = RK4(@(t,x) B*x,tspan,x01,h);
 
 % BI2_0.4 integration (decent)
 theta = 0.1;
@@ -348,7 +373,7 @@ Nsteps = diff(tspan)/h;
 xx=zeros(2,Nsteps);
 analy = xx;
 
-xx(:,1)=x0;
+xx(:,1)=x01;
 
 for k=1:Nsteps
     xx(:,k+1) = F*xx(:,k);
@@ -362,21 +387,35 @@ end
 
 % Analytical plot
 figure(1)
-plot(times,analy(1,:),times,analy(2,:))
+plot(times,analy(1,:),times,analy(2,:),'LineWidth',1.5)
 hold on
 
-% Numerical plots
-plot(times,xx(1,:),times,xx(2,:))
+% BI2 plots
+plot(times,xx(1,:),times,xx(2,:),'LineWidth',1.5)
 grid on
 
-figure(2)
-plot(times,analy(1,:))
-hold on
-% Numerical plot
-plot(times,numerical(1,:))
-grid on
+legend_options = {'Interpreter','latex','Location','best',...
+    'FontSize',12};
+label_options = {'Interpreter','latex','FontSize',14};
 
-% Eigenvalues of the dynamical system (stiff) have very different values
+legend_entries = {'$x_1 - analytical$','$x_2 - analytical$',...
+                    '$x_1 - BI2_{0.4}$','$x_2 - BI2_{0.4}$'};
+                
+legend(legend_entries{:},legend_options{:})
+xlabel('$time [s]$',label_options{:})
+ylabel('$x_1\;;x_2$',label_options{:})
+
+% RK4 plots
+figure()
+semilogy(times,[abs(numerical(1,:)); abs(numerical(2,:))],'LineWidth',2)
+grid on
+legend_entries = {'$x_1 - RK4$','$x_2 - RK4$'};
+
+legend(legend_entries{:},legend_options{:})
+xlabel('$time [s]$',label_options{:})
+ylabel('$log(x_1)\;;log(x_2)$',label_options{:})
+
+% Eigenvalues plots in the stability region
 hlambdas = h*eig(B);
 
 figure()
@@ -389,10 +428,18 @@ figBI2.LineWidth=1.5;
 R_RK4 = easystability(4);
 [~,figRK4] = contour(X,Y,-R_RK4,[-1 -1],'k');
 figRK4.LineWidth=1.5;
+fig_RK4.Fill='on';
 
-plot(real(hlambdas),imag(hlambdas),'*r')
+plot(real(hlambdas),imag(hlambdas),'*r','LineWidth',2)
 grid on
 axis padded
+
+legend_entries = {'$BI2_{0.1} stability$','$RK4 \; stability$',...
+                    '$h\lambda_i$'};
+legend(legend_entries{:},legend_options{:})
+
+xlabel('$Re\{h\lambda\}$',label_options{:})
+ylabel('$Im\{h\lambda\}$',label_options{:})
 
 %% Functions
 function [root,fevals] = bisection(f,a,b,Tol)
@@ -468,12 +515,12 @@ function [roots,fevals] = newton_analytical(fun,x0,J,Tol)
 x = x0;
 f = fun(x);
 fevals = 0;
-Nmax = 1000;
+% Nmax = 1000;
 
 while abs(f)>=Tol % && fevals<Nmax
     f = fun(x);
-    dX = -J(x)\f;
-    x = x +dX;
+    dX = - J(x)\f;
+    x = x + dX;
     fevals = fevals+1;
 end
 roots = x;
@@ -485,10 +532,25 @@ f = fun(x);
 fevals = 0;
 while abs(f)>=Tol
     f = fun(x);
-    invJ = inv(FD_Jacobian(x,fun));     % HOW CAN I AVOID COMPUTING THE INVERSE?
-    x = x - invJ*f;
+    J = FD_Jacobian(x,fun);     
+    x = x - J\f;
     fevals = fevals+1;
 end
+
+roots = x;
+end
+
+function [roots,fevals] = newton_CD(fun,x0,Tol)
+x = x0;
+f = fun(x);
+fevals = 0;
+while abs(f)>=Tol
+    f = fun(x);
+    J = CD_Jacobian(x,fun);     
+    x = x - J\f;
+    fevals = fevals+1;
+end
+
 roots = x;
 end
 
@@ -503,6 +565,21 @@ for i=1:size(X)
     EPS_i(i) = hj(i);
     Fi = f(X + EPS_i);
     J(:,i) = (Fi - F0)'/hj(i);
+end
+
+end
+
+function J = CD_Jacobian(X,f)
+
+J = zeros(size(X,1));
+hj = max(sqrt(eps),sqrt(eps)*abs(X));
+
+for i=1:size(X)
+    EPS_i = zeros(size(X));
+    EPS_i(i) = hj(i);
+    Fi = f(X + EPS_i);
+    F_i = f(X - EPS_i);
+    J(:,i) = (Fi - F_i)'/(2*hj(i));
 end
 
 end
@@ -643,7 +720,7 @@ switch algor
 end
 end
 
-function [Rhat,X,Y]=easystability(algorithm,th)
+function [Rhat,X,Y] = easystability(algorithm,th)
 
 % INPUT:
 %   algorithm       variable defining the type of algorithm to plot
