@@ -29,7 +29,6 @@ f = @(x) [x(1).^2 - x(1) - x(2); x(1).^2/16 + x(2).^2 - 1];
 U = X.^2 - X - Y;
 V =  X.^2/16 + Y.^2 - 1;
 q=quiver(X,Y,U,V,2.5);
-% q.ShowArrowHead='off';
 q.MaxHeadSize = 0.05;
 
 labelopts = {'Interpreter','latex','FontSize',14};
@@ -48,18 +47,21 @@ J = @(x) [2*x(1)-1, -1; x(1)/8, 2*x(2)];           % Analytical Jacobian
 Tol = 1e-8;
 
 tic
-[roots(:,1),~] = newton_analytical(f,x01,J,Tol);
-[roots(:,2),~] = newton_analytical(f,x02,J,Tol);
+jacobian_type = 1;          % 1: analytical jacobian
+[roots(:,1),~] = newton(f,x01,Tol,jacobian_type,J);
+[roots(:,2),~] = newton(f,x02,Tol,jacobian_type,J);
 t_analytical = toc();
 
 tic
-[rootsFD(:,1),~] = newton_FD(f,x01,Tol);
-[rootsFD(:,2),~] = newton_FD(f,x02,Tol);
+jacobian_type = 2;
+[rootsFD(:,1),~] = newton(f,x01,Tol,jacobian_type);
+[rootsFD(:,2),~] = newton(f,x02,Tol,jacobian_type);
 t_FD = toc();
 
 tic
-[rootsCD(:,1),~] = newton_CD(f,x01,Tol);
-[rootsCD(:,2),~] = newton_CD(f,x02,Tol);
+jacobian_type = 3;
+[rootsCD(:,1),~] = newton(f,x01,Tol,jacobian_type);
+[rootsCD(:,2),~] = newton(f,x02,Tol,jacobian_type);
 t_CD = toc();
 
 % Compute exact roots
@@ -519,46 +521,29 @@ end
 root = x;
 end
 
-function [roots,fevals] = newton_analytical(fun,x0,J,Tol)
+function [roots,fevals] = newton(fun,x0,Tol,jacobian_type,J)
 x = x0;
-f = fun(x);
 fevals = 0;
-% Nmax = 1000;
+increment = norm(x0,inf);
 
-while abs(f)>=Tol % && fevals<Nmax
+while increment>=Tol 
     f = fun(x);
-    dX = - J(x)\f;
-    x = x + dX;
+    
+    switch jacobian_type
+        case 1
+            Jac = J(x);
+        case 2
+            Jac = FD_Jacobian(x,fun);
+        case 3
+            Jac = CD_Jacobian(x,fun);
+    end
+    
+    DX = - Jac\f;
+    xold = x;
+    x = x + DX;
+    increment=norm(x-xold,inf);
     fevals = fevals+1;
 end
-roots = x;
-end
-
-function [roots,fevals] = newton_FD(fun,x0,Tol)
-x = x0;
-f = fun(x);
-fevals = 0;
-while abs(f)>=Tol
-    f = fun(x);
-    J = FD_Jacobian(x,fun);     
-    x = x - J\f;
-    fevals = fevals+1;
-end
-
-roots = x;
-end
-
-function [roots,fevals] = newton_CD(fun,x0,Tol)
-x = x0;
-f = fun(x);
-fevals = 0;
-while abs(f)>=Tol
-    f = fun(x);
-    J = CD_Jacobian(x,fun);     
-    x = x - J\f;
-    fevals = fevals+1;
-end
-
 roots = x;
 end
 
