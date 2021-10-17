@@ -20,7 +20,7 @@ tic
 [root2, i_2] = regulafalsi(f,a,b,Tol);
 t_RF=toc();
 
-%% Ex 2 (FIX IT, NOT OK)
+%% Ex 2 (FIX IT, NOT OK, label plots)
 clearvars; close all; clc
 
 % Plot of the vector function
@@ -209,7 +209,7 @@ tol = [1e-3 1e-4 1e-5 1e-6];
 LineSpec = {'LineWidth',2};
 
 for i=1:length(alfa)
- lambdas(i) = max(eig(A(alfa(i))));
+    lambdas(i) = max(eig(A(alfa(i))));
 end
 
 guess = [5*tol;
@@ -222,21 +222,21 @@ for i=1:3
     hold on
     axis equal
     for j=1:length(tol)
-%         guess = 1e-4;
-    options = optimset('TolX',1e-1*tol(j));
+        guessRK1 = 1e-4;
+        options = optimset('TolX',1e-1*tol(j));
         for k=1:length(alfa)
             a = alfa(k);
             AA = A(a);
             if i==1
                 
                 h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x01,abs(x),i) ...
-                    - x_an(a),inf)-tol(j),guess,options);
+                    - x_an(a),inf)-tol(j),guessRK1,options);
                 
-                   
+                
                 if isnan(h(k))
-                    guess=tol(j);
+                    guessRK1=tol(j);
                 else
-                    guess=h(k);
+                    guessRK1=h(k);
                 end
                 
                 
@@ -249,12 +249,12 @@ for i=1:3
         plot([real(hl) flip(real(hl))],...
             [imag(hl) -flip(imag(hl))],LineSpec{:})
         legend_entries{j}=sprintf("tol=%0.0e",tol(j));
-
+        
     end
     grid on
     xlabel('$Re\{h\lambda\}$','Interpreter','latex')
     ylabel('$Im\{h\lambda\}$','Interpreter','latex')
-
+    
     legend(legend_entries{:})
 end
 t_EX5=toc()
