@@ -28,8 +28,16 @@ f = @(x) [x(1).^2 - x(1) - x(2); x(1).^2/16 + x(2).^2 - 1];
 [X,Y] = meshgrid(-2:0.1:2,-2:0.1:2);
 U = X.^2 - X - Y;
 V =  X.^2/16 + Y.^2 - 1;
-quiver(X,Y,U,V)
-axis fill
+q=quiver(X,Y,U,V,2.5);
+% q.ShowArrowHead='off';
+q.MaxHeadSize = 0.05;
+
+labelopts = {'Interpreter','latex','FontSize',14};
+titleopts = {'Interpreter','latex','FontSize',14};
+
+title('$\vec{f}(\vec{x})$',titleopts{:})
+xlabel('$x_1$',labelopts{:})
+ylabel('$x_2$',labelopts{:})
 
 % Initial guesses for the zeros, from the plot
 x01 = [1;1];                                        
