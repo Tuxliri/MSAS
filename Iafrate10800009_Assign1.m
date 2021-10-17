@@ -6,21 +6,21 @@ fplot(f), grid on;
 a = 0.5;
 b = 1.1;
 accuracy = 8;       % Digits accuracy
-Tol = 10^-(accuracy+1);
+N = 10^-(accuracy+1);
 
 tic
-[root,i] = bisection(f,a,b,Tol);
+[root,i] = bisection(f,a,b,N);
 t_BI = toc();
 
 tic
-[root1,i_1] = secant(f,a,b,Tol);
+[root1,i_1] = secant(f,a,b,N);
 t_SEC = toc();
 
 tic
-[root2, i_2] = regulafalsi(f,a,b,Tol);
+[root2, i_2] = regulafalsi(f,a,b,N);
 t_RF=toc();
 
-%% Ex 2
+%% Ex 2 CHECK THE RESULTS
 clearvars; close all; clc
 
 % Plot of the vector function
@@ -39,29 +39,29 @@ xlabel('$x_1$',labelopts{:})
 ylabel('$x_2$',labelopts{:})
 
 % Initial guesses for the zeros, from the plot
-x01 = [1;1];                                        
-x02 = [-1;1];
+x01 = [1.1;1];                                        
+x02 = [-1.1;1];
 
 J = @(x) [2*x(1)-1, -1; x(1)/8, 2*x(2)];           % Analytical Jacobian
 
-Tol = 1e-8;
+N = 5;
 
 tic
 jacobian_type = 1;          % 1: analytical jacobian
-[roots(:,1),i_AN] = newton(f,x01,Tol,jacobian_type,J);
-[roots(:,2),~] = newton(f,x02,Tol,jacobian_type,J);
+roots(:,1) = newton(f,x01,N,jacobian_type,J);
+roots(:,2) = newton(f,x02,N,jacobian_type,J);
 t_analytical = toc();
 
 tic
 jacobian_type = 2;
-[rootsFD(:,1),i_FD] = newton(f,x01,Tol,jacobian_type);
-[rootsFD(:,2),~] = newton(f,x02,Tol,jacobian_type);
+rootsFD(:,1) = newton(f,x01,N,jacobian_type);
+rootsFD(:,2) = newton(f,x02,N,jacobian_type);
 t_FD = toc();
 
 tic
 jacobian_type = 3;
-[rootsCD(:,1),i_CD] = newton(f,x01,Tol,jacobian_type);
-[rootsCD(:,2),~] = newton(f,x02,Tol,jacobian_type);
+rootsCD(:,1) = newton(f,x01,N,jacobian_type);
+rootsCD(:,2) = newton(f,x02,N,jacobian_type);
 t_CD = toc();
 
 % Compute exact roots
@@ -101,7 +101,7 @@ for i=1:length(h)
     [sol,~,times] = RK2(f,tspan,x01,h(i));
     solRK2(i) = sol(:,end);
     plot(times,sol,'--')
-    errorRK2(i) = max(abs(sol-x_an(0:h(i):tspan(end))));
+    errorRK2(i) = norm(sol-x_an(0:h(i):tspan(end)),inf);
     g = @() RK2(f,tspan,x01,h(i));
     timeRK2(i) = timeit(g);
 end
@@ -127,7 +127,7 @@ for i = 1:length(h)
     [sol,fevals(i),times] = RK4(f,tspan,x01,h(i));
     solRK4(i) = sol(:,end);
     plot(times,sol,'--')
-    errorRK4(i) = max(abs(sol-x_an(0:h(i):tspan(end))));
+    errorRK4(i) = norm(sol-x_an(0:h(i):tspan(end)),inf);
     g = @() RK4(f,tspan,x01,h(i));
     timeRK4(i) = timeit(g);
 end
@@ -137,7 +137,7 @@ grid on
 legend(legend_entries{:},legend_options{:})
 xlabel('$time [s]$',label_options{:})
 ylabel('$x_{RK4}(t)$',label_options{:})
-
+    
 % Plotting
 figure(3)
 fig_RK2=loglog(timeRK2,errorRK2);
@@ -192,18 +192,20 @@ for k = 1:2
     
     fill(X,Y, [0.8 0.8 1]) ;
 
-    plot(X,Y)
+    plot(X,Y,'HandleVisibility','off')
     grid on
     axis equal
     axis padded
     
-
+    
     xlabel('$Re\{h\lambda\}$','Interpreter','latex')
     ylabel('$Im\{h\lambda\}$','Interpreter','latex')
 
     % Given that lambda = 1
     
-    plot(hs,0,'*r')
+    plot(hs,zeros(size(hs)),'*r')
+    
+    legend('Stable Region','$h\lambda_i$','Interpreter','latex')
 end
 
 %% Ex 5 STILL SLOW, TAKES A COUPLE OF MINUTES
@@ -268,6 +270,7 @@ for i=1:3
     legend(legend_entries{:})
 end
 t_EX5=toc()
+
 
 %% Ex 6
 clearvars; close all; clc
@@ -353,12 +356,25 @@ end
 
 legend_entries = {'$BI2_{0.1}$','$BI2_{0.3}$','$BI2_{0.7}$','$BI2_{0.9}$'};
 grid on
-axis equal
-axis padded
+
 legend(legend_entries{:},'Interpreter','latex','Location','best')
 
 xlabel('$Re\{h\lambda\}$','Interpreter','latex')
 ylabel('$Im\{h\lambda\}$','Interpreter','latex')
+
+levelsopts = {'ShowText','on','LineStyle','--','HandleVisibility','off',...
+    'LineWidth',1.5};
+        
+axis padded
+
+[R_BI2_09,X,Y] = easystability(5,theta(4));
+contour(X,Y,R_BI2_09,[0.8 1.2],...
+                    'LineColor',[0.49,0.18,0.56],levelsopts{:});
+
+[R_BI2_01,X,Y] = easystability(5,theta(1));
+contour(X,Y,R_BI2_01,[0.8 1.2],...
+                    'LineColor',[0.00,0.45,0.74],levelsopts{:});
+axis([-5.5 5.5 -4 4])
 
 %% Ex 7
 
@@ -431,8 +447,8 @@ hlambdas = h*eig(B);
 figure()
 
 hold on
-[R_BI2,X,Y] = easystability(5,theta);
-[~,figBI2] = contour(X,Y,-R_BI2,[-1 -1]);
+[R_BI2_09,X,Y] = easystability(5,theta);
+[~,figBI2] = contour(X,Y,-R_BI2_09,[-1 -1]);
 figBI2.LineWidth=1.5;
 
 R_RK4 = easystability(4);
@@ -521,12 +537,10 @@ end
 root = x;
 end
 
-function [roots,fevals] = newton(fun,x0,Tol,jacobian_type,J)
+function [roots] = newton(fun,x0,Nmax,jacobian_type,J)
 x = x0;
-fevals = 0;
-increment = norm(x0,inf);
 
-while increment>=Tol 
+for i = 1:Nmax
     f = fun(x);
     
     switch jacobian_type
@@ -539,10 +553,7 @@ while increment>=Tol
     end
     
     DX = - Jac\f;
-    xold = x;
     x = x + DX;
-    increment=norm(x-xold,inf);
-    fevals = fevals+1;
 end
 roots = x;
 end
