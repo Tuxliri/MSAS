@@ -101,7 +101,7 @@ for i=1:length(h)
     [sol,~,times] = RK2(f,tspan,x01,h(i));
     solRK2(i) = sol(:,end);
     plot(times,sol,'--')
-    errorRK2(i) = norm(sol-x_an(0:h(i):tspan(end)),inf);
+    errorRK2(i) = max(abs(sol-x_an(0:h(i):tspan(end))));
     g = @() RK2(f,tspan,x01,h(i));
     timeRK2(i) = timeit(g);
 end
@@ -127,7 +127,7 @@ for i = 1:length(h)
     [sol,fevals(i),times] = RK4(f,tspan,x01,h(i));
     solRK4(i) = sol(:,end);
     plot(times,sol,'--')
-    errorRK4(i) = norm(sol-x_an(0:h(i):tspan(end)),inf);
+    errorRK4(i) = max(abs(sol-x_an(0:h(i):tspan(end))));
     g = @() RK4(f,tspan,x01,h(i));
     timeRK4(i) = timeit(g);
 end
