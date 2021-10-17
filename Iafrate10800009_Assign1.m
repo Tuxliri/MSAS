@@ -196,13 +196,13 @@ for k = 1:2
     plot(hs,0,'*r')
 end
 
-%% Ex 5 FIX THE RK1, case not running
+%% Ex 5 STILL SLOW, TAKES A COUPLE OF MINUTES
 clearvars; close all; clc
 
 x01 = [1;1];
 tspan = [0 1];
 
-alfa = linspace(pi, 0,50);
+alfa = linspace(pi, 0,100);
 x_an = @(a) expm(A(a))*x01;       % Final time is t=1, no need to specify it
 tol = [1e-3 1e-4 1e-5 1e-6];
 
@@ -223,7 +223,7 @@ for i=1:3
     axis equal
     for j=1:length(tol)
         guessRK1 = 1e-4;
-        options = optimset('TolX',1e-1*tol(j));
+        options = optimset('TolX',1e-2*tol(j));
         for k=1:length(alfa)
             a = alfa(k);
             AA = A(a);
