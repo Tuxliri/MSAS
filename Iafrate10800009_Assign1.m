@@ -6,7 +6,7 @@ fplot(f), grid on;
 a = 0.5;
 b = 1.1;
 accuracy = 8;       % Digits accuracy
-Tol = 10^-accuracy;
+Tol = 10^-(accuracy+1);
 
 tic
 [root,i] = bisection(f,a,b,Tol);
@@ -20,7 +20,7 @@ tic
 [root2, i_2] = regulafalsi(f,a,b,Tol);
 t_RF=toc();
 
-%% Ex 2 (FIX IT, NOT OK, label plots)
+%% Ex 2
 clearvars; close all; clc
 
 % Plot of the vector function
@@ -48,19 +48,19 @@ Tol = 1e-8;
 
 tic
 jacobian_type = 1;          % 1: analytical jacobian
-[roots(:,1),~] = newton(f,x01,Tol,jacobian_type,J);
+[roots(:,1),i_AN] = newton(f,x01,Tol,jacobian_type,J);
 [roots(:,2),~] = newton(f,x02,Tol,jacobian_type,J);
 t_analytical = toc();
 
 tic
 jacobian_type = 2;
-[rootsFD(:,1),~] = newton(f,x01,Tol,jacobian_type);
+[rootsFD(:,1),i_FD] = newton(f,x01,Tol,jacobian_type);
 [rootsFD(:,2),~] = newton(f,x02,Tol,jacobian_type);
 t_FD = toc();
 
 tic
 jacobian_type = 3;
-[rootsCD(:,1),~] = newton(f,x01,Tol,jacobian_type);
+[rootsCD(:,1),i_CD] = newton(f,x01,Tol,jacobian_type);
 [rootsCD(:,2),~] = newton(f,x02,Tol,jacobian_type);
 t_CD = toc();
 
