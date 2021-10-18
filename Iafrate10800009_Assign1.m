@@ -42,7 +42,7 @@ ylabel('$x_2$',labelopts{:})
 x01 = [1.1;1];                                        
 x02 = [-1.1;1];
 
-J = @(x) [2*x(1)-1, -1; x(1)/8, 2*x(2)];           % Analytical Jacobian
+J = @(x,unused) [2*x(1)-1, -1; x(1)/8, 2*x(2)];           % Analytical Jacobian
 
 N = 5;
 
@@ -536,7 +536,7 @@ end
 root = x;
 end
 
-function [roots] = newton(fun,x0,Nmax,jacobian_type,J)
+function [roots] = newton(fun,x0,Nmax,type,J)
 %newton  compute the roots of function *fun* using Newton's algorithm, with
 %           either the analytical Jacobian or its numerical approximation
 %
@@ -557,18 +557,15 @@ function [roots] = newton(fun,x0,Nmax,jacobian_type,J)
 
 x = x0;
 
+if nargin<5
+    JAC = {NaN,@FD_Jacobian,@CD_Jacobian};
+else
+    JAC = {J,@FD_Jacobian,@CD_Jacobian};
+end
+
 for i = 1:Nmax
     f = fun(x);
-    
-    switch jacobian_type
-        case 1
-            Jac = J(x);
-        case 2
-            Jac = FD_Jacobian(x,fun);
-        case 3
-            Jac = CD_Jacobian(x,fun);
-    end
-    
+    Jac = JAC{type}(x,fun);
     DX = - Jac\f;
     x = x + DX;
 end
