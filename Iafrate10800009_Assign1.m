@@ -538,6 +538,24 @@ root = x;
 end
 
 function [roots] = newton(fun,x0,Nmax,jacobian_type,J)
+%newton  compute the roots of function *fun* using Newton's algorithm, with
+%           either the analytical Jacobian or its numerical approximation
+%
+% Author
+%   Davide Iafrate
+% 
+% Inputs:
+%   fun:  function handle representing the RHS of the system
+%   x0 : initial guess
+%   Nmax: number of iterations
+%   jacobian_type:  scalar value to choose what Jacobian to use
+%                      |-> 1: analytical
+%                      |-> 2: Forward Difference numerical
+%                      |-> 3: Central Difference numerical
+%
+% Outputs:
+%   roots  :    roots of the system
+
 x = x0;
 
 for i = 1:Nmax
@@ -559,6 +577,19 @@ roots = x;
 end
 
 function J = FD_Jacobian(X,f)
+%FD_Jacobian  return the Jacobian of function f computed numerically using
+%   the Forward Difference scheme
+%
+%
+% Author
+%   Davide Iafrate
+% 
+% Inputs:
+%   X : [N,1] state of the system in which we want to evaluate the jacobian
+%   f:  function handle representing the RHS of the system
+%
+% Outputs:
+%   J[NxN]  :    System Jacobian in X
 
 J = zeros(size(X,1));
 F0 = f(X);
@@ -574,59 +605,119 @@ end
 end
 
 function J = CD_Jacobian(X,f)
+%CD_Jacobian  return the Jacobian of function f computed numerically using
+%   the Central Difference scheme
+%
+%
+% Author
+%   Davide Iafrate
+% 
+% Inputs:
+%   X : [N,1] state of the system in which we want to evaluate the jacobian
+%   f:  function handle representing the RHS of the system
+%
+% Outputs:
+%   J[NxN]  :    System Jacobian in X
 
 J = zeros(size(X,1));
+
+% Compute the perturbation
 hj = max(sqrt(eps),sqrt(eps)*abs(X));
 
 for i=1:size(X)
+    % Perturb the function in each state direction
     EPS_i = zeros(size(X));
     EPS_i(i) = hj(i);
     Fi = f(X + EPS_i);
     F_i = f(X - EPS_i);
+    
+    % Compute the i-th column of the Jacobian
     J(:,i) = (Fi - F_i)'/(2*hj(i));
 end
 
 end
 
 function [x,fevals,times] = RK1(f,tspan,x0,h)
+%RK1  integrate non-linear system dynamics using the Runge-Kutta 1 (Forward
+%       Euler) integration
+%
+%
+% Author
+%   Davide Iafrate 
+% 
+% Inputs:
+%   f : function handle of the RHS of the system dynamics, f(t,x)
+%   tspan[1x2]  : vector of time interval extremes
+%   x0[Nx1]: initial condition of the state
+%   h[1x1]:  time-step size
+%
+% Outputs:
+%   x[NxY]  :    System state propagated for Y time istants
+%   fevals[1x1] : number of function evaluations
+%   times[Yx1]:  time istants of state computation vector
 
+% Initialize state and time variables
 x = x0;
 times = tspan(1):h:tspan(end);
-fevals = 0;
 t = tspan(1);
+
+% Check for non-integer number of steps, adapting the final step
 
 if mod(diff(tspan),h)~=0
     times=[times tspan(end)];
 end
 
+% Compute each timestep size (necessary for non-integer number of steps)
+
 hs = diff(times);
-for i=1:(length(times)-1)
-    
+
+for i=1:(length(times)-1)    
     h = hs(i);
     fk = f(t,x);
-    fevals = fevals + 1;
     x = x + h*fk;
     t = t + h;
 end
+
+fevals = i;
+
 end
 
 function [x,fevals,times] = RK2(f,tspan,x0,h)
+%RK2  integrate non-linear system dynamics using the Runge-Kutta 2 (Heun's
+%method) integration
+%
+%
+% Author
+%   Davide Iafrate 
+% 
+% Inputs:
+%   f : function handle of the RHS of the system dynamics, f(t,x)
+%   tspan[1x2]  : vector of time interval extremes
+%   x0[Nx1]: initial condition of the state
+%   h[1x1]:  time-step size
+%
+% Outputs:
+%   x[NxY]  :    System state propagated for Y time istants
+%   fevals[1x1] : number of function evaluations
+%   times[Yx1]:  time istants of state computation vector
 
+% Initialize state and time variables
 x = x0;
 times = tspan(1):h:tspan(end);
 t = tspan(1);
 
-fevals = 0;
+% Check for non-integer number of steps, adapting the final step
 
 if mod(diff(tspan),h)~=0
     times=[times tspan(end)];
 end
+
+% Compute each timestep size (necessary for non-integer number of steps)
 
 hs = diff(times);
 
 for i=1:(length(times)-1)
     xk = x(:,i);
-    
     fk = f(t,xk);
     
     % Shrink the last timestep
@@ -636,27 +727,47 @@ for i=1:(length(times)-1)
     xp = xk + h*fk;
     t = t + h;
     fp = f(t,xp);
-    fevals = fevals + 1;
     
     % Corrector step
     x(:,i+1) = xk + h*(0.5*fk + 0.5*fp);
     
 end
 
+fevals = 2*i;
+
 end
 
 function [x,fevals,times] = RK4(f,tspan,x0,h)
+%RK4  integrate non-linear system dynamics using the Runge-Kutta 4
+%integrator
+%
+%
+% Author
+%   Name: DAVIDE 
+%   Surname: IAFRATE
+% 
+% Inputs:
+%   f : function handle of the RHS of the system dynamics, f(t,x)
+%   tspan[1x2]  : vector of time interval extremes
+%   x0[Nx1]: initial condition of the state
+%   h[1x1]:  time-step size
+%
+% Outputs:
+%   x[NxY]  :    System state propagated for Y time istants
+%   fevals[1x1] : number of function evaluations
+%   times[Yx1]:  time istants of state computation vector
 
+% Initialize state and time variables
 x = x0;
 times = tspan(1):h:tspan(end);
 t = tspan(1);
 
-fevals = 0;
-
+% Check for non-integer number of steps, adapting the final step
 if mod(diff(tspan),h)~=0
     times=[times tspan(end)];
 end
 
+% Compute each timestep size (necessary for non-integer number of steps)
 hs = diff(times);
 
 for k=1:(length(times)-1)
@@ -686,23 +797,52 @@ for k=1:(length(times)-1)
     % Corrector step
     x(:,k+1) = xk + (k1 + 2*k2 + 2*k3 + k4)*h/6;
     
-    t = t+h;
-    fevals = fevals+4;
-    
+    % Update time
+    t = t + h;    
 end
+
+% 4 function evaluations per step are required
+fevals = 4*k;
+
 end
 
 function A_A = A(alfa)
+%A  return the system dynamics matrix as function of the angle alfa
+%
+%
+% Author
+%   Name: DAVIDE 
+%   Surname: IAFRATE
+% 
+% Inputs:
+%   alfa : [1,1] scalar angle   [rad]
+%
+% Outputs:
+%   A_A[2x2]  :    System dynamics matrix
+
 A_A =[0 1; -1 2*cos(alfa)];
 end
 
 function F = ffwd(A,h,algor,th)
-
-% Function that returns the F operator s.t. x_(k+1) = F*xk
-% algor:
-%   + 1 RK1
-%   + 2 RK2
-%   + 4 RK4
+%ffwd Function that returns the F operator of the selected algorithm s.t.
+%       x_(k+1) = F*xk
+% 
+% 
+% AUTHOR:
+%   Davide Iafrate
+% 
+% Inputs:
+%   A[NxN]          system dynamics matrix
+%   h[1x1]          timestep size
+%   algor[1x1]      scalar value to select the integration algorithm
+%                    |-> 1: Runge-Kutta 1 (Forward Euler)
+%                    |-> 2: Runge-Kutta 2 (Heun)
+%                    |-> 4: Runge-Kutta 4
+%   th : [1,1]  *optional* scalar value of the theta parameter for the 
+%               theta-methods
+% 
+% Outputs:
+%   F[NxN]          integration method F-matrix
 
 [~,n]=size(A);
 I = eye(n);
@@ -722,16 +862,37 @@ switch algor
             (I + A*th*h + 0.5*(A*th*h)^2);
         
 end
+
 end
 
 function [Rhat,X,Y] = easystability(algorithm,th)
+%easystability      function computing the value of the he absolute value 
+%   of the mapped eigenvalues for the chosen integration method, 
+%   in the range real(hl)=[-5 5], imag(hl)=[-5 5]
+%   The output can be directly fed into the contour function as
+%       contour(X,Y,Rhat) in order to produce the marginal stability
+%       isolines of the method
+%
+%
+% Author
+%   Name: Davide Iafrate
+% 
+% Inputs:
+%   algorithm : [1,1] scalar value to select the alcorithm   [-]
+%                       |-> 2: Runge-Kutta 2 (Heun)
+%                       |-> 4: Runge-Kutta 4
+%                       |-> 5: BI2_theta
+% 
+%   th : [1,1]  *optional* scalar value of the theta parameter for the 
+%               theta-methods
+%
+% Outputs:
+%   Rhat[1001x1001]  :    method's operator absolute value matrix
+%   X[1001x1001]     :    matrix where each row is the vector -5:0.01:5
+%   Y[1001x1001]     :    matrix where each row is the vector -5:0.01:5
 
-% INPUT:
-%   algorithm       variable defining the type of algorithm to plot
-%                       2: RK2
-%                       4: RK4
-%                       5: BI2_theta
 [X,Y] = meshgrid(-5:0.01:5,-5:0.01:5);
+% Make the mesh the imaginary plane
 hl = X+1i*Y;
 
 switch algorithm
@@ -743,8 +904,9 @@ switch algorithm
         R = 1./(1 - (1-th).*hl+ 0.5*((1-th)*hl).^2).*...
             (1 + th*hl + 0.5*(th*hl).^2);
 end
-
+% absolute value of the complex-valued R matrix
 Rhat = abs(R);
+
 end
 
 function x_end=wrapper(f,tspan,x0,h,algor)
