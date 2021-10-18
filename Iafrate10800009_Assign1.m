@@ -20,7 +20,7 @@ tic
 [root2, i_2] = regulafalsi(f,a,b,N);
 t_RF=toc();
 
-%% Ex 2 CHECK THE RESULTS
+%% Ex 2
 clearvars; close all; clc
 
 % Plot of the vector function
@@ -270,7 +270,6 @@ for i=1:3
     legend(legend_entries{:})
 end
 t_EX5=toc()
-
 
 %% Ex 6
 clearvars; close all; clc
