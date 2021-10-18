@@ -559,8 +559,10 @@ x = x0;
 
 if nargin<5
     JAC = {NaN,@FD_Jacobian,@CD_Jacobian};
-else
+elseif nargin==5
     JAC = {J,@FD_Jacobian,@CD_Jacobian};
+else
+    error("Too many arguments")
 end
 
 for i = 1:Nmax
