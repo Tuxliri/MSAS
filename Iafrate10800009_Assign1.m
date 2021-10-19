@@ -242,7 +242,7 @@ guess = [5*tol;
     0.5 0.5 0.5 0.5];
 
 tic
-for i=1:3
+for i=2:3
     figure(i)
     hold on
     axis equal
@@ -966,14 +966,8 @@ end
 
 function x_end=wrapper(f,tspan,x0,h,algor)
 % Wrapper function, returning the state at the final integration step
+INT = {@RK1,@RK2,@RK4};
 
-switch algor
-    case 1
-        xx = RK1(f,tspan,x0,h);
-    case 2
-        xx = RK2(f,tspan,x0,h);
-    case 3
-        xx = RK4(f,tspan,x0,h);
-end
+xx = INT{algor}(f,tspan,x0,h);
 x_end=xx(:,end);
 end
