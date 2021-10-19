@@ -1,15 +1,26 @@
 %% Ex 1
 clearvars; close all; clc
 
+% Plot the function to estimate the zero interval
+xx=linspace(-5,5,1000);
 f = @(x) cos(x) - x;
-fplot(f), grid on;
+plot(xx,f(xx),'LineWidth',2), grid on;
+hold on
+plot(xx,zeros(size(xx)),'--r','LineWidth',1.5)
+xlabel('x','Interpreter','latex')
+ylabel('f(x)','Interpreter','latex')
+
+% zero interval from plot
 a = 0.5;
 b = 1.1;
-accuracy = 8;       % Digits accuracy
+
+% Digits accuracy
+accuracy = 8;       
 N = 10^-(accuracy+1);
 
+% Root computations
 tic
-[root,i] = bisection(f,a,b,N);
+[root,i_0] = bisection(f,a,b,N);
 t_BI = toc();
 
 tic
@@ -23,7 +34,7 @@ t_RF=toc();
 %% Ex 2
 clearvars; close all; clc
 
-% Plot of the vector function
+% Plot of the vector field
 f = @(x) [x(1).^2 - x(1) - x(2); x(1).^2/16 + x(2).^2 - 1];
 [X,Y] = meshgrid(-2:0.1:2,-2:0.1:2);
 U = X.^2 - X - Y;
@@ -42,9 +53,9 @@ ylabel('$x_2$',labelopts{:})
 x01 = [1.1;1];                                        
 x02 = [-1.1;1];
 
-J = @(x,unused) [2*x(1)-1, -1; x(1)/8, 2*x(2)];           % Analytical Jacobian
+J = @(x,unused) [2*x(1)-1, -1; x(1)/8, 2*x(2)];      % Analytical Jacobian
 
-N = 5;
+N = 5;      % Number of iterations
 
 tic
 jacobian_type = 1;          % 1: analytical jacobian
@@ -53,13 +64,13 @@ roots(:,2) = newton(f,x02,N,jacobian_type,J);
 t_analytical = toc();
 
 tic
-jacobian_type = 2;
+jacobian_type = 2;          % 2: forward difference jacobian
 rootsFD(:,1) = newton(f,x01,N,jacobian_type);
 rootsFD(:,2) = newton(f,x02,N,jacobian_type);
 t_FD = toc();
 
 tic
-jacobian_type = 3;
+jacobian_type = 3;          % 3: central difference jacobian
 rootsCD(:,1) = newton(f,x01,N,jacobian_type);
 rootsCD(:,2) = newton(f,x02,N,jacobian_type);
 t_CD = toc();
@@ -69,7 +80,7 @@ syms x y real
 [solx,soly] = solve(x^2-x-y==0, x^2/16 +y^2-1==0);
 SOL = double([solx';soly']);
 
-% Compare the two solutions
+% Compare the solutions to the exact one
 error_an = vecnorm(roots-SOL);
 error_FD = vecnorm(rootsFD-SOL);
 error_CD = vecnorm(rootsCD-SOL);
@@ -215,15 +226,17 @@ x01 = [1;1];
 tspan = [0 1];
 
 alfa = linspace(pi, 0,100);
-x_an = @(a) expm(A(a))*x01;       % Final time is t=1, no need to specify it
+x_an = @(a) expm(A(a))*x01;       % analytical solution, at final time t=1
 tol = [1e-3 1e-4 1e-5 1e-6];
 
 LineSpec = {'LineWidth',2};
 
+% Compute continous system eigenvalues
 for i=1:length(alfa)
     lambdas(i) = max(eig(A(alfa(i))));
 end
 
+% Initial guesses for fzero
 guess = [5*tol;
     0.01 0.01 0.01 0.01;
     0.5 0.5 0.5 0.5];
@@ -269,7 +282,7 @@ for i=1:3
     
     legend(legend_entries{:})
 end
-t_EX5=toc()
+% t_EX5=toc()
 
 %% Ex 6
 clearvars; close all; clc
@@ -468,6 +481,20 @@ ylabel('$Im\{h\lambda\}$',label_options{:})
 
 %% Functions
 function [root,fevals] = bisection(f,a,b,Tol)
+%BISECTION  compute the root of an equation using the *bisection* method
+% 
+% Author:
+%       Davide Iafrate
+% 
+% INPUT:
+%   f       function handle of the objective function
+%   a       left extreme of the search interval
+%   b       right extreme of the search interval
+%   Tol     tolerance of the solution
+% 
+% OUTPUT:
+%   root    estimated root of the function
+%   fevals  number of function evaluations
 
 %Initialization
 x = (a+b)/2;
@@ -492,6 +519,21 @@ root = x;
 end
 
 function [root,fevals] = secant(f,x0,x1,Tol)
+%SECANT  compute the root of an equation using the *secant* method
+% 
+% Author:
+%       Davide Iafrate
+% 
+% INPUT:
+%   f       function handle of the objective function
+%   x0       left extreme of the search interval
+%   x1       right extreme of the search interval
+%   Tol     tolerance of the solution
+% 
+% OUTPUT:
+%   root    estimated root of the function
+%   fevals  number of function evaluations
+
 xk = x1;
 xk_1 = x0;
 
@@ -511,6 +553,21 @@ root = xk1;
 end
 
 function [root,fevals] = regulafalsi(f,a,b,Tol)
+%REGULAFALSI  compute the root of an equation using the *regula falsi*
+%               method
+% 
+% Author:
+%       Davide Iafrate
+% 
+% INPUT:
+%   f       function handle of the objective function
+%   a       left extreme of the search interval
+%   b       right extreme of the search interval
+%   Tol     tolerance of the solution
+% 
+% OUTPUT:
+%   root    estimated root of the function
+%   fevals  number of function evaluations
 
 %Initialization
 fevals = 0;
