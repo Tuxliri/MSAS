@@ -237,52 +237,65 @@ for i=1:length(alfa)
 end
 
 % Initial guesses for fzero
-guess = [5*tol;
+guess = [tol;
     0.01 0.01 0.01 0.01;
     0.5 0.5 0.5 0.5];
 
 tic
-for i=2:3
+ 
+for i=1:3       % three integration methods
     figure(i)
     hold on
     axis equal
-    for j=1:length(tol)
-        guessRK1 = 1e-4;
+    
+    for j=1:length(tol)     % for each tolerance
+        guessRK1 = tol(j);
         options = optimset('TolX',1e-2*tol(j));
+        
         for k=1:length(alfa)
+            
             a = alfa(k);
             AA = A(a);
+            
             if i==1
-                
                 h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x01,abs(x),i) ...
                     - x_an(a),inf)-tol(j),guessRK1,options);
                 
-                
-                if isnan(h(k))
-                    guessRK1=tol(j);
-                else
+                % guess update
                     guessRK1=h(k);
-                end
-                
                 
             else
                 h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x01,abs(x),i) ...
                     - x_an(a),inf) - tol(j),guess(i,j));
             end
         end
+        AA = A(pi);
+        [~,fevals(i,j)] = wrapper(@(t,y) AA*y,tspan,x01,abs(h(1)),i);
+            
+        % Plotting
         hl = abs(h).*lambdas;
         plot([real(hl) flip(real(hl))],...
             [imag(hl) -flip(imag(hl))],LineSpec{:})
         legend_entries{j}=sprintf("tol=%0.0e",tol(j));
         
     end
+    
     grid on
     xlabel('$Re\{h\lambda\}$','Interpreter','latex')
     ylabel('$Im\{h\lambda\}$','Interpreter','latex')
     
     legend(legend_entries{:})
 end
-% t_EX5=toc()
+
+time=toc()
+
+figure()
+loglog(tol,fevals,'LineWidth',2)
+grid on
+xlabel('Tolerance','Interpreter','latex')
+ylabel('Function evaluations','Interpreter','latex')
+legenditems = {'RK1','RK2','RK4'};
+legend(legenditems{:},'Interpreter','latex')
 
 %% Ex 6
 clearvars; close all; clc
@@ -964,10 +977,10 @@ Rhat = abs(R);
 
 end
 
-function x_end=wrapper(f,tspan,x0,h,algor)
+function [x_end,fevals] = wrapper(f,tspan,x0,h,algor)
 % Wrapper function, returning the state at the final integration step
 INT = {@RK1,@RK2,@RK4};
 
-xx = INT{algor}(f,tspan,x0,h);
+[xx,fevals,~] = INT{algor}(f,tspan,x0,h);
 x_end=xx(:,end);
 end
