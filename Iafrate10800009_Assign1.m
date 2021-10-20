@@ -222,11 +222,14 @@ end
 %% Ex 5 STILL SLOW, TAKES A COUPLE OF MINUTES
 clearvars; close all; clc
 
+% Initial conditions and timespan
 x01 = [1;1];
 tspan = [0 1];
 
-alfa = linspace(pi, 0,100);
+alfa = linspace(pi, 0,100);       % angles vector of the eigenvalues
 x_an = @(a) expm(A(a))*x01;       % analytical solution, at final time t=1
+
+% tolerances vector
 tol = [1e-3 1e-4 1e-5 1e-6];
 
 LineSpec = {'LineWidth',2};
@@ -237,9 +240,9 @@ for i=1:length(alfa)
 end
 
 % Initial guesses for fzero
-guess = [tol;
-    0.01 0.01 0.01 0.01;
-    0.5 0.5 0.5 0.5];
+guess = [tol;                   % RK1 guesses
+        0.01 0.01 0.01 0.01;    % RK2
+        0.5 0.5 0.5 0.5];       % RK4
 
 tic
  
@@ -249,7 +252,7 @@ for i=1:3       % three integration methods
     axis equal
     
     for j=1:length(tol)     % for each tolerance
-        guessRK1 = tol(j);
+        guessRK1 = tol(j);      % Initial guess for RK1
         options = optimset('TolX',1e-2*tol(j));
         
         for k=1:length(alfa)
@@ -261,8 +264,8 @@ for i=1:3       % three integration methods
                 h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x01,abs(x),i) ...
                     - x_an(a),inf)-tol(j),guessRK1,options);
                 
-                % guess update
-                    guessRK1=h(k);
+                % guess update for next step
+                guessRK1=h(k);
                 
             else
                 h(k) = fzero(@(x) norm(wrapper(@(t,y) AA*y,tspan,x01,abs(x),i) ...
@@ -292,10 +295,10 @@ time=toc()
 figure()
 loglog(tol,fevals,'LineWidth',2)
 grid on
-xlabel('Tolerance','Interpreter','latex')
-ylabel('Function evaluations','Interpreter','latex')
+xlabel('Tolerance','Interpreter','latex','FontSize',12)
+ylabel('Function evaluations','Interpreter','latex','FontSize',12)
 legenditems = {'RK1','RK2','RK4'};
-legend(legenditems{:},'Interpreter','latex')
+legend(legenditems{:},'Interpreter','latex','FontSize',12)
 
 %% Ex 6
 clearvars; close all; clc
