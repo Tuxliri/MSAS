@@ -1,3 +1,7 @@
+% Modeling and Simulation of Aerospace Systems (2020/2021)
+% Assignment # 1
+% Author: Davide Iafrate
+
 %% Ex 1
 clearvars; close all; clc
 
@@ -219,7 +223,9 @@ for k = 1:2
     legend('Stable Region','$h\lambda_i$','Interpreter','latex')
 end
 
-%% Ex 5 STILL SLOW, TAKES A COUPLE OF MINUTES
+%% Ex 5
+% (TAKES A COUPLE OF MINUTES TO RUN)
+
 clearvars; close all; clc
 
 % Initial conditions and timespan
