@@ -1,4 +1,4 @@
-% Modeling and Simulation of Aerospace Systems (2020/2021)
+% Modeling and Simulation of Aerospace Systems (2021/2022)
 % Assignment # 1
 % Author: Davide Iafrate
 
@@ -111,6 +111,7 @@ label_options = {'Interpreter','latex','FontSize',14};
 figure (1)
 hold on
 
+errorRK2 = zeros(size(h));
 % RK2 computations
 for i=1:length(h)
     [sol,~,times] = RK2(f,tspan,x01,h(i));
@@ -137,8 +138,11 @@ timeRK4 = solRK4;
 
 figure(2)
 hold on
-for i = 1:length(h)
+fevals = zeros(size(h));
+errorRK4 = zeros(size(h));
 
+for i = 1:length(h)
+    
     [sol,fevals(i),times] = RK4(f,tspan,x01,h(i));
     solRK4(i) = sol(:,end);
     plot(times,sol,'--')
@@ -186,7 +190,6 @@ for k = 1:2
         a = alfa(i);
         try
             h(i) = fzero(@(x) max(abs(eig(ffwd(A(a),x,algorithm(k)))))-1,5);
-
         catch mess
             warning(mess.message)
         end
@@ -220,7 +223,7 @@ for k = 1:2
     
     plot(hs,zeros(size(hs)),'*r')
     
-    legend('Stable Region','$h\lambda_i$','Interpreter','latex')
+    legend('Stable Region','$h_i\lambda$','Interpreter','latex')
 end
 
 %% Ex 5
@@ -296,7 +299,7 @@ for i=1:3       % three integration methods
     legend(legend_entries{:})
 end
 
-time=toc()
+time=toc();
 
 figure()
 loglog(tol,fevals,'LineWidth',2)
@@ -305,6 +308,7 @@ xlabel('Tolerance','Interpreter','latex','FontSize',12)
 ylabel('Function evaluations','Interpreter','latex','FontSize',12)
 legenditems = {'RK1','RK2','RK4'};
 legend(legenditems{:},'Interpreter','latex','FontSize',12)
+
 
 %% Ex 6
 clearvars; close all; clc
@@ -519,25 +523,25 @@ function [root,fevals] = bisection(f,a,b,Tol)
 %   fevals  number of function evaluations
 
 %Initialization
-x = (a+b)/2;
-fevals = 0;
+fevals = 1;
+fa = f(a);
 
 while abs(b-a)/2>=Tol
-    x = (a+b)/2;
+    c = (a+b)/2;
     
-    fa = f(a);
-    fx = f(x);
+    fc = f(c);
     
-    if fx*fa<0
-        b = x;
+    if fc*fa<0
+        b = c;
     else
-        a = x;
+        a = c;
+        fa = fc;
     end
     
-    fevals = fevals + 2;
+    fevals = fevals + 1;
     
 end
-root = x;
+root = c;
 end
 
 function [root,fevals] = secant(f,x0,x1,Tol)
@@ -887,9 +891,8 @@ function A_A = A(alfa)
 %A  return the system dynamics matrix as function of the angle alfa
 %
 %
-% Author
-%   Name: DAVIDE 
-%   Surname: IAFRATE
+% Author:
+%    Davide Iafrate
 % 
 % Inputs:
 %   alfa : [1,1] scalar angle   [rad]
@@ -943,7 +946,7 @@ end
 end
 
 function [Rhat,X,Y] = easystability(algorithm,th)
-%easystability      function computing the value of the he absolute value 
+%EASYSTABILITY      function computing the value of the he absolute value 
 %   of the mapped eigenvalues for the chosen integration method, 
 %   in the range real(hl)=[-5 5], imag(hl)=[-5 5]
 %   The output can be directly fed into the contour function as
@@ -951,8 +954,8 @@ function [Rhat,X,Y] = easystability(algorithm,th)
 %       isolines of the method
 %
 %
-% Author
-%   Name: Davide Iafrate
+% Author:
+%    Davide Iafrate
 % 
 % Inputs:
 %   algorithm : [1,1] scalar value to select the alcorithm   [-]
@@ -987,7 +990,23 @@ Rhat = abs(R);
 end
 
 function [x_end,fevals] = wrapper(f,tspan,x0,h,algor)
-% Wrapper function, returning the state at the final integration step
+%WRAPPER  Wrapper function for the integrators, returning the state at the
+%         final integration step
+%
+% Author:
+%   Davide Iafrate 
+% 
+% Inputs:
+%   f : function handle of the RHS of the system dynamics, f(t,x)
+%   tspan[1x2]  : vector of time interval extremes
+%   x0[Nx1]: initial condition of the state
+%   h[1x1]:  time-step size
+%
+% Outputs:
+%   x[Nx1]  :    System state propagated for Y time istants
+%   fevals[1x1] : number of function evaluations
+
+% Integrators selection
 INT = {@RK1,@RK2,@RK4};
 
 [xx,fevals,~] = INT{algor}(f,tspan,x0,h);
