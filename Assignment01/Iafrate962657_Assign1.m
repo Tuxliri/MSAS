@@ -23,17 +23,18 @@ accuracy = 8;
 N = 10^-(accuracy+1);
 
 % Root computations
-tic
 [root,i_0] = bisection(f,a,b,N);
-t_BI = toc();
 
-tic
+
 [root1,i_1] = secant(f,a,b,N);
-t_SEC = toc();
 
-tic
+
 [root2, i_2] = regulafalsi(f,a,b,N);
-t_RF=toc();
+
+
+t_BI = timeit(@() bisection(f,a,b,N));
+t_SEC = timeit(@() secant(f,a,b,N));
+t_RF = timeit(@() regulafalsi(f,a,b,N));
 
 %% Ex 2
 clearvars; close all; clc
@@ -563,19 +564,23 @@ function [root,fevals] = secant(f,x0,x1,Tol)
 xk = x1;
 xk_1 = x0;
 
-fevals = 0;
+fevals = 1;
+fk_1 = f(xk_1);
 
 while abs(xk-xk_1)>=Tol
     fk = f(xk);
-    fk_1 = f(xk_1);
-    
+    fevals = fevals + 1;
+
     xk1 = xk - (xk - xk_1)*fk/(fk - fk_1);
-    fevals = fevals + 2;
+
+    fk_1 = fk;
     
     xk_1=xk;
     xk = xk1;
 end
+
 root = xk1;
+
 end
 
 function [root,fevals] = regulafalsi(f,a,b,Tol)
@@ -596,23 +601,24 @@ function [root,fevals] = regulafalsi(f,a,b,Tol)
 %   fevals  number of function evaluations
 
 %Initialization
-fevals = 0;
+fa = f(a);
+fb = f(b);
+fevals = 2;
 
 while abs(b-a)/2>=Tol
-    fa = f(a);
-    fb = f(b);
+    
     x = b - (b-a)*fb/(fb-fa);
     fx = f(x);
     
     if fx>0
         b = x;
-        
+        fb = fx;
     else
         a = x;
-        
+        fa = fx;
     end
     
-    fevals = fevals + 3;
+    fevals = fevals + 1;
     
 end
 
