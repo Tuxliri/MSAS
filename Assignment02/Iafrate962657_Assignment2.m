@@ -2,11 +2,11 @@
 % Assignment # 1
 % Author: Davide Iafrate
 
-%% Ex 1 -(CHECK DAMPING LAW)
+%% Ex 1
 clearvars; close all; clc
 
-k = 1;
-b = 0.5;
+k = 3.1416;
+b = 2.7120;
 
 % Set initial conditions for the state
 y0 = [0; 0; 0; 0];
@@ -21,13 +21,16 @@ ddth2 = dy(4,:);
 figure()
 plot(tt,ddth1,tt,ddth2,'LineWidth',2)
 grid minor
-
+ylabel('Angular acceleration [rad/s^2]')
+xlabel('time [s]')
+legend('$\ddot{\theta}_1$','$\ddot{\theta}_2$','Interpreter','latex','FontSize',14)
 F = open('data.mat');
 data = F.data;
 
 % parameters estimation
 x0 = [2;3];
-sol = fmincon(@(y) costFcn(y,data),x0,[-1 0; 0 -1],[0;0]);
+sol = lsqnonlin(@(y) costFcn(y,data),x0,[0;0],[inf;inf]);
+
 
 b = sol(1);
 k = sol(2);
@@ -40,7 +43,10 @@ ddth2 = dy(4,:);
 
 figure()
 semilogy(tt,abs(ddth1'-data(:,2)),tt,abs(ddth2'-data(:,3)),'LineWidth',1) 
+ylabel('$|\ddot{\theta}_{1,2}^N - y_{1,2}^N|$','Interpreter','latex','FontSize',12)
+xlabel('time [s]')
 grid on
+legend('$|\ddot{\theta}_1^N-y_1^N|$','$|\ddot{\theta}_2^N-y_2^N|$','Interpreter','latex','FontSize',14)
 
 %% Ex 2
 clearvars; close all; clc
@@ -108,15 +114,23 @@ x0 = [Vt0;
       x0;
       vx0;
       Vacc0];
-  
-tspan = [0 3];
+
+  tf = 3;
+tspan = [0 tf];
 
 opts = odeset('RelTol',1e-6,'AbsTol',1e-6);
-[tt,xx] = ode15s(@(t,x) exercise2ODE(t,x,data),tspan,x0,opts);
 
 
-% opts = odeset(opts,'event',@(t,y) actuator_event(t,y,data));
-% [tt,xx,te,xxe,ie] = ode15s(@(t,x) exercise2ODE(t,x,data),tspan,x0,opts);
+opts = odeset(opts,'event',@(t,y) actuator_event(t,y,data));
+[tt1,xx1,te,xxe,ie] = ode15s(@(t,x) exercise2ODE(t,x,data),tspan,x0,opts);
+
+% Integrate from te to tf setting the velocity to 0
+x0 = xx1(end,:);
+x0(3) = 0;
+tspan = [te tf];
+[tt2,xx2] = ode15s(@(t,x) exercise2ODE(t,x,data),tspan,x0,opts);
+tt = [tt1;tt2];
+xx = [xx1; xx2];
 
 for i =1:length(tt)
     [dy,outpar(i,:)] = exercise2ODE(tt(i),xx(i,:),data);
@@ -134,53 +148,88 @@ title('v piston')
 figure()
 plot(tt,xx(:,4))
 title('V acc')
-
-figure()
+hold on
 plot(tt,xx(:,1))
 title('V tank')
 
 %% Ex 3
 clearvars; close all; clc
 
+% Circuit parameters
+R1 = 1000;
+R2 = 100;
+L = 1e-3;
+C = 1e-3;
+
+% System dynamics matrix
+A = [0 1;
+    -(1/L/C)/(1+R2/R1) -(1/R1/C+R2/L)/(1+R2/R1)];
+
+eig(A)
+
+% Initial conditions
+tStart = tic;
 y0 = [1; 0];
-[tt,yy] = ode45(@RLC,[0 20],y0);
-plot(tt,yy(:,1))
+[tt,yy] = ode23s(@RLC,[0 1],y0);
+plot(tt,yy(:,1),'LineWidth',1.5)
+ylabel('$V_c(t)$ [V]','Interpreter','latex')
+xlabel('$t$ [s]','Interpreter','latex')
+t_free = toc(tStart);
+
+grid minor
 
 y0 = [1; 0];
+
+% Compare the computational time of the non-stiff and stiff integrators
+tStart = tic;     
 [tt,yy] = ode45(@forcedRLC,[0 10],y0);
-figure()
-plot(tt,yy(:,1))
+t_ode45 = toc(tStart);
 
-%% Ex 4 (CHECK DISCRETIZATION)
+tStart = tic;     
+[tt,yy] = ode23s(@forcedRLC,[0 10],y0);
+t_ode23 = toc(tStart);
+
+figure()
+plot(tt,yy(:,1),'LineWidth',1.5)
+grid minor
+ylabel('$V_c(t)$ [V]','Interpreter','latex')
+xlabel('$t$ [s]','Interpreter','latex')
+
+%% Ex 4
 clearvars; close all; clc
 y0 = 20*(ones(6,1));
 t=0;
 nozzle(t,y0)
 tspan = [0:0.1:0.9 1 5:5:60];
 [tt,xx] = ode45(@nozzle,tspan,y0);
-k = [401 45 45 100 0.5 0.5 401];
-DX = [5 25 25 0.5 10 10 5]*1e-3;
-R = DX./k;
-q = (1000-20)/sum(R);
+% k = [401 45 45 100 0.5 0.5 401];
+% DX = [5 25 25 0.5 10 10 5]*1e-3;
+% R = DX./k;
+% q = (1000-20)/sum(R);
 
+% Plot temperature profiles
+y = [0.4 0.4];    
 
+X = [0 0.5 3 5.5 5.5 8.1 10.6 11.1];
+figure(1)
+hold on
+yy = [20+980*min(tt,1) xx 20*ones(length(tt),1)];
+plot(X,yy(:,:))
+xline(X,'--r')
+annotation('textarrow',[0.2 0.3],[0.2 0.9],'String','$t$','Interpreter','latex','LineWidth',1)
+
+% 2 nodes per element
 y0 = 20*(ones(8,1));
 t=0;
 nozzle2(t,y0)
 [tt1,xx1] = ode45(@nozzle2,tspan,y0);
 
-% Plot temperature profiles
-X = [0 0.5 3 5.5 5.6 6.6 7.6 8.1];
-figure(1)
-yy = [20+980*min(tt,1) xx 20*ones(length(tt),1)];
-plot(X,yy(:,:))
-xline(X,'--r')
-
-X = [0 0.5:(5/3):5.5 5.6:(2/3):7.6 8.1];
+X = [0 0.5:(5/3):5.5 5.5:(5/3):10.6 11.1];
 figure(2)
 yy1 = [20+979*min(tt1,1) xx1 20*ones(length(tt1),1)];
 
 plot(X,yy1(:,:))
+annotation('textarrow',[0.2 0.3],[0.2 0.9],'String','$t$','Interpreter','latex','LineWidth',1)
 xline(X,'--r')
 
 %% Functions
@@ -220,10 +269,12 @@ function cost = costFcn(y,data)
     T0 = 0.1;
     ddth1 = k*(xx(:,2)-xx(:,1))/J1;
     ddth2 = (k*(xx(:,1)-xx(:,2))-b*sign(xx(:,4)).*xx(:,4).^2+T0)/J2;
-
-    cost = norm([ddth1-data(:,2);
-            ddth2-data(:,3)]);
+% 
+%     cost = norm([ddth1-data(:,2);
+%             ddth2-data(:,3)]);
     
+    cost = [ddth1-data(:,2);
+            ddth2-data(:,3)];
 end
 
 function dy = RLC(t,y)
@@ -277,12 +328,16 @@ T5 = y(4);
 T6 = y(5);
 T7 = y(6);% Generate temperatures vector
 T = [Ti; T2; T3; T4; T5; T6; T7; To];
-DX = [0.5 2.5 2.5 0.1 1 1 0.5]*1e-3;
-DXmass = [0 2.5/4 2.5/2 2.5/4 10/4 10/2 10/4 0]*1e-3;
+DX = [0.5 2.5 2.5 0.1 2.5 2.5 0.5]*1e-3;
+DXmass = [0 5/4 5/2 5/4 5/4 5/2 5/4 0]*1e-3;
+m=rho.*DXmass;
+R = DX./k;
+R(4) = 1/5000;
 
 dT = zeros(length(y),1);
 for i=1:6
-    dT(i) = 1/(rho(i+1)*C(i+1)*DXmass(i+1))*(k(i)*(T(i)-T(i+1))/DX(i) + k(i+1)*(T(i+2)-T(i+1))/DX(i+1));
+    dT(i) = 1/(m(i+1)*C(i+1))*((T(i)-T(i+1))/R(i) + (T(i+2)-T(i+1))/R(i+1));
+
 end
 
 dy=dT;
@@ -290,7 +345,6 @@ end
 
 function dy = nozzle2(t,y)
 % segments length
-li = [5 50 0.5 20 5]*1e-3;
 Ti = 20 + 980*min(t,1);
 To = 20;
 
@@ -311,15 +365,20 @@ T6 = y(5);
 T7 = y(6);
 T8 = y(7);
 T9 = y(8);
+
 % Generate temperatures vector
 T = [Ti; T2; T3; T4; T5; T6; T7; T8; T9; To];
-DX = [0.5 2.5/3 2.5/3 2.5/3 0.1 2/3 2/3 2/3 0.5]*1e-3;
+DX = [0.5 5/3 5/3 5/3 0.1 5/3 5/3 5/3 0.5]*1e-3;
 
-DXmass = [0 2.5/6 2.5/3 2.5/3 2.5/6 10/6 10/3 10/3 10/6 0]*1e-3;
+DXmass = [0 5/6 5/3 5/3 5/6 5/6 5/3 5/3 5/6 0]*1e-3;
+
+m = rho.*DXmass;
+R = DX./k;
+R(5) = 1/5000;
 
 dT = zeros(length(y),1);
 for i=1:length(y)
-    dT(i) = 1/(rho(i+1)*C(i+1)*DXmass(i+1))*(k(i)*(T(i)-T(i+1))/DX(i) + k(i+1)*(T(i+2)-T(i+1))/DX(i+1));
+    dT(i) = 1/(m(i+1)*C(i+1))*((T(i)-T(i+1))/R(i) + (T(i+2)-T(i+1))/R(i+1));
 end
 
 dy=dT;
@@ -327,12 +386,12 @@ end
 
 function [dy,outpar] = exercise2ODE(t,y,data)
 
-%% Extract variables from state
+% Extract variables from state
 x = y(2);
 vx = y(3);
 Vacc = y(4);
 
-%% pilot piston boundary conditions
+% pilot piston boundary conditions
 cc_max = data.actuator.cc_max;
 
 if x < 0
@@ -353,14 +412,14 @@ end
 
 m = data.actuator.m;
 
-%% flows due to piston
+% flows due to piston
 Atop = data.actuator.Atop;
 Abottom = data.actuator.Abottom;
 
 Q4 = Atop*vx;
 Q5 = -Abottom*vx;
 
-%% DISTRIBUTOR model
+% DISTRIBUTOR model
 d0 = data.distributor.d0;
 
 % control history
@@ -383,27 +442,27 @@ if u < 0
     Q6 = Q4;
 end
 
-%% Fluid data
+% Fluid data
 rho = data.skydrol.rho;
 
-%% ACCUMULATOR
+% ACCUMULATOR
 V0 = data.accumulator.V0;
 P0 = data.accumulator.P0;
 gamma = data.accumulator.gamma;
 Pacc = P0*(V0/(V0+Vacc))^gamma;
 
-%% Delivery line
+% Delivery line
 kA = data.accumulator.kA;
 deliveryArea = 1/4*pi*(data.deliveryLine.D)^2;
 
 P1 = Pacc - 0.5*kA*rho*Q3/deliveryArea*abs(Q3/deliveryArea);
 
-%% CHECK valve
+% CHECK valve
 kCV = data.checkValve.kCV;
 
 P2 = P1 - 0.5*kCV*rho*Q3/deliveryArea*abs(Q3/deliveryArea);
 
-%% Delivery Line losses
+% Delivery Line losses
 v23 = Q3/deliveryArea;
 L23 = data.deliveryLine.L;
 D23 = data.deliveryLine.D;
@@ -411,7 +470,7 @@ f23 = data.deliveryLine.f;
 
 P3 = P2 - 0.5*f23*L23/D23*rho*v23*abs(v23);
 
-%% TANK
+% TANK
 returnArea = 1/4*pi*(data.returnLine.D)^2;
 P_T = data.tank.P_T;
 kT = data.tank.kT;
@@ -419,14 +478,14 @@ v67 = Q6/returnArea;
 
 P7 = P_T - 0.5*kT*rho*Q6/returnArea*abs(Q6/returnArea);
 
-%% Return Line losses
+% Return Line losses
 L67 = data.returnLine.L;
 D67 = data.returnLine.D;
 f67 = data.returnLine.f;
 
 P6 = P7 - 0.5*f67*L67/D67*rho*v67*abs(v67);
 
-%%
+%
 
 % Pressure drops
 kd = data.distributor.kd;
@@ -454,13 +513,13 @@ elseif u > 0
 %     end
 end
 
-%% Load
+% Load
 F0 = data.load.F0;
 k = data.load.k;
 
 Fx = F0 + k*x;
 
-%% States derivatives
+% States derivatives
 dVT = -Q6;
 dx = vx;
 ddx = 1/m*(P4*Atop - P5*Abottom - Fx);
@@ -480,8 +539,10 @@ dy = [dVT;
       dx;
       ddx;
       dVacc];
-%% Parameters output
-outpar = [P4 P5 Av];
+  
+% Parameters output
+outpar = [P1 P2 P3 P4 P5 P6 P7 Q3 Q4 Q5 Q6 Av];
+
 end
 
 function u = command(t,data)
