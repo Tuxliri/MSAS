@@ -110,12 +110,17 @@ x0 = 0;
 vx0 = 0;
 Vacc0 = 0;
 
+% System state initial conditions
+
 x0 = [Vt0;
       x0;
       vx0;
       Vacc0];
 
-  tf = 3;
+% Final integration time
+tf = 3;
+
+% Integration timespan
 tspan = [0 tf];
 
 opts = odeset('RelTol',1e-6,'AbsTol',1e-6);
@@ -125,32 +130,100 @@ opts = odeset(opts,'event',@(t,y) actuator_event(t,y,data));
 [tt1,xx1,te,xxe,ie] = ode15s(@(t,x) exercise2ODE(t,x,data),tspan,x0,opts);
 
 % Integrate from te to tf setting the velocity to 0
-x0 = xx1(end,:);
+x0 = xxe;
 x0(3) = 0;
 tspan = [te tf];
 [tt2,xx2] = ode15s(@(t,x) exercise2ODE(t,x,data),tspan,x0,opts);
 tt = [tt1;tt2];
 xx = [xx1; xx2];
 
+% Retrieve system response at each time instant
 for i =1:length(tt)
-    [dy,outpar(i,:)] = exercise2ODE(tt(i),xx(i,:),data);
+    [dy,parout(i,:)] = exercise2ODE(tt(i),xx(i,:),data);
 end
 
-figure()
-plot(tt,xx(:,2))
-title('x piston')
+disp('--> parameters evaluation done...')
+
+% Extract circuit parameters
+
+Q1 = parout(:,1);
+Q2 = parout(:,2);
+Q3 = parout(:,3);
+Q4 = parout(:,4);
+Q5 = parout(:,5);
+Q6 = parout(:,6);
+Q7 = parout(:,7);
+Qacc = parout(:,8);
+p1 = parout(:,9);
+p2 = parout(:,10);
+p3 = parout(:,11);
+p4 = parout(:,12);
+p5 = parout(:,13);
+p6 = parout(:,14);
+p7 = parout(:,15);
+pAcc = parout(:,16);
+Av = parout(:,17);
+u = parout(:,18);
 
 figure()
-plot(tt,xx(:,3))
-title('v piston')
-
+plot(tt,xx(:,2),'LineWidth',2)
+ylabel('Piston position $[m]$','Interpreter','latex')
+xlabel('time [s]','Interpreter','latex')
+grid minor
 
 figure()
-plot(tt,xx(:,4))
-title('V acc')
+plot(tt,xx(:,3),'LineWidth',2)
+ylabel('Piston velocity $[m/s]$','Interpreter','latex')
+xlabel('time [s]','Interpreter','latex')
+grid minor
+
+figure()
+plot(tt,-xx(:,4),'LineWidth',2)
 hold on
-plot(tt,xx(:,1))
-title('V tank')
+plot(tt,xx(:,1),'LineWidth',2)
+xlabel('time [s]','Interpreter','latex')
+ylabel('Volume $[m^3]$','Interpreter','latex')
+grid minor
+legend('$V_{accumulator}$','$V_{tank}$','Interpreter','latex')
+
+figure()
+hold on, grid minor, box on
+plot(tt,Q3.*tt*1e3,tt,Q5.*tt*1e3)
+xlabel('time [s]')
+ylabel('voumetric flow rate $\mathrm{\left[\frac{l}{s}\right]}$', 'interpreter', 'latex')
+legend('$\mathrm{Q_3}$','$\mathrm{Q_6}$', 'interpreter', 'latex')
+
+figure()
+hold on, grid minor, box on
+[ylab,~,~] = plotyy(tt,u,tt,Av*1e6);
+xlabel('time [s]')
+ylabel(ylab(1),'valve position [-]')
+ylabel(ylab(2),'valve orifice opening [mm^2]')
+
+figure()
+hold on, grid minor, box on
+plot(tt,pAcc*1e-6,tt,p1*1e-6,...
+    tt,p2*1e-6,tt,p3*1e-6,tt,p4*1e-6,tt,p5*1e-6)
+xlabel('time [s]')
+ylabel('pressure [MPa]')
+legend('$\mathrm{p_{Acc}}$','$\mathrm{p_1}$','$\mathrm{p_2}$',...
+    '$\mathrm{p_3}$','$\mathrm{p_4}$','$\mathrm{p_5}$','interpreter', 'latex')
+
+figure()
+hold on, grid minor, box on
+plot(tt,p6*1e-6,tt,p7*1e-6,tt,data.tank.P_T*ones(size(tt))*1e-6,'-.')
+xlabel('time [s]')
+ylabel('pressure [MPa]')
+legend('$\mathrm{p_6}$','$\mathrm{p_7}$','$\mathrm{p_{tank}}$', 'interpreter', 'latex')
+
+% figure()
+% hold on, grid minor, box on
+% plot(tt,(pAcc-p1)*1e-6,...
+%     tt,(pAcc-p2)*1e-6,tt,(pAcc-p3)*1e-6,tt,(pAcc-p4)*1e-6)%,tt,(pAcc-p5)*1e-6)
+% xlabel('time [s]')
+% ylabel('pressure [MPa]')
+% legend('$\mathrm{p_{Acc}}$','$\mathrm{p_1}$','$\mathrm{p_2}$',...
+%     '$\mathrm{p_3}$','$\mathrm{p_4}$','$\mathrm{p_5}$','interpreter', 'latex')
 
 %% Ex 3
 clearvars; close all; clc
@@ -197,40 +270,56 @@ xlabel('$t$ [s]','Interpreter','latex')
 
 %% Ex 4
 clearvars; close all; clc
+
 y0 = 20*(ones(6,1));
 t=0;
-nozzle(t,y0)
-tspan = [0:0.1:0.9 1 5:5:60];
-[tt,xx] = ode45(@nozzle,tspan,y0);
-% k = [401 45 45 100 0.5 0.5 401];
-% DX = [5 25 25 0.5 10 10 5]*1e-3;
-% R = DX./k;
-% q = (1000-20)/sum(R);
+
+tspan = [0:0.2:0.9 1:1:5 10];
+for i=1:length(tspan)
+    legendentries{i}=sprintf('$t=%0.5g$',tspan(i));
+end
+
+[tt,xx] = ode23s(@nozzle,tspan,y0);
 
 % Plot temperature profiles
 y = [0.4 0.4];    
 
-X = [0 0.5 3 5.5 5.5 8.1 10.6 11.1];
+
 figure(1)
 hold on
+
+X = [0 0.5 3 5.5 5.5 8.1 10.5 11];
 yy = [20+980*min(tt,1) xx 20*ones(length(tt),1)];
-plot(X,yy(:,:))
+plot(X,yy(:,:),'LineWidth',1.5)
 xline(X,'--r')
-annotation('textarrow',[0.2 0.3],[0.2 0.9],'String','$t$','Interpreter','latex','LineWidth',1)
+annotation('textarrow',[0.2 0.3],[0.2 0.9],'String','$t$',...
+    'Interpreter','latex','LineWidth',1,'FontSize',14)
+
+legend(legendentries{:},'Interpreter','latex')
+ylabel('$temperature\; T_i(t)\; [^{\circ}C]$','Interpreter','latex') 
+xlabel('$x\; [mm]$','Interpreter','latex') 
+xlim([X(1) X(end)])
 
 % 2 nodes per element
 y0 = 20*(ones(8,1));
 t=0;
-nozzle2(t,y0)
-[tt1,xx1] = ode45(@nozzle2,tspan,y0);
+[tt1,xx1] = ode23s(@nozzle2,tspan,y0);
 
-X = [0 0.5:(5/3):5.5 5.5:(5/3):10.6 11.1];
+
 figure(2)
+
+X = [0 0.5:(5/3):5.5 5.5:(5/3):10.5 11];
 yy1 = [20+979*min(tt1,1) xx1 20*ones(length(tt1),1)];
 
-plot(X,yy1(:,:))
-annotation('textarrow',[0.2 0.3],[0.2 0.9],'String','$t$','Interpreter','latex','LineWidth',1)
+plot(X,yy1(:,:),'LineWidth',1.5)
+annotation('textarrow',[0.2 0.3],[0.2 0.9],'String','$t$',...
+    'Interpreter','latex','LineWidth',1,'FontSize',14)
 xline(X,'--r')
+
+legend(legendentries{:},'Interpreter','latex')
+ylabel('$temperature\; T_i(t)\; [^{\circ}C]$','Interpreter','latex') 
+xlabel('$x\; [mm]$','Interpreter','latex') 
+xlim([X(1) X(end)])
 
 %% Functions
 function dy = jck(~,y,b,k)
@@ -269,10 +358,7 @@ function cost = costFcn(y,data)
     T0 = 0.1;
     ddth1 = k*(xx(:,2)-xx(:,1))/J1;
     ddth2 = (k*(xx(:,1)-xx(:,2))-b*sign(xx(:,4)).*xx(:,4).^2+T0)/J2;
-% 
-%     cost = norm([ddth1-data(:,2);
-%             ddth2-data(:,3)]);
-    
+
     cost = [ddth1-data(:,2);
             ddth2-data(:,3)];
 end
@@ -334,13 +420,12 @@ m=rho.*DXmass;
 R = DX./k;
 R(4) = 1/5000;
 
-dT = zeros(length(y),1);
-for i=1:6
-    dT(i) = 1/(m(i+1)*C(i+1))*((T(i)-T(i+1))/R(i) + (T(i+2)-T(i+1))/R(i+1));
-
+dT = zeros(length(y)+2,1);
+for i=2:7
+    dT(i) = 1/(m(i)*C(i))*((T(i-1)-T(i))/R(i-1) + (T(i+1)-T(i))/R(i));
 end
 
-dy=dT;
+dy=dT(2:7);
 end
 
 function dy = nozzle2(t,y)
@@ -376,12 +461,12 @@ m = rho.*DXmass;
 R = DX./k;
 R(5) = 1/5000;
 
-dT = zeros(length(y),1);
-for i=1:length(y)
-    dT(i) = 1/(m(i+1)*C(i+1))*((T(i)-T(i+1))/R(i) + (T(i+2)-T(i+1))/R(i+1));
+dT = zeros(length(y)+2,1);
+for i=2:9
+    dT(i) = 1/(m(i)*C(i))*((T(i-1)-T(i))/R(i-1) + (T(i+1)-T(i))/R(i));
 end
 
-dy=dT;
+dy=dT(2:9);
 end
 
 function [dy,outpar] = exercise2ODE(t,y,data)
@@ -392,7 +477,7 @@ vx = y(3);
 Vacc = y(4);
 
 % pilot piston boundary conditions
-cc_max = data.actuator.cc_max;
+x_max = data.actuator.cc_max;
 
 if x < 0
     x = 0;
@@ -402,11 +487,11 @@ if x <= 0 && vx < 0
     vx = 0;
 
 end
-if x > cc_max
-    x = cc_max;
+if x > x_max
+    x = x_max;
 end
-if x >= cc_max && vx > 0
-    x = cc_max;
+if x >= x_max && vx > 0
+    x = x_max;
     vx = 0;
 end
 
@@ -531,7 +616,7 @@ if Vacc >= data.accumulator.Vmax
 end
 
 % pilot piston physical constraints
-if (x >= cc_max && ddx > 0) || (x <= 0 && ddx < 0)
+if (x >= x_max && ddx > 0) || (x <= 0 && ddx < 0)
     ddx = 0;
 end
 
@@ -541,7 +626,12 @@ dy = [dVT;
       dVacc];
   
 % Parameters output
-outpar = [P1 P2 P3 P4 P5 P6 P7 Q3 Q4 Q5 Q6 Av];
+Q2 = Q3;
+Q1 = Q2;
+Qacc = Q1;
+Q7 = Q6;
+
+outpar = [Q1 Q2 Q3 Q4 Q5 Q6 Q7 Qacc P1 P2 P3 P4 P5 P6 P7 Pacc Av u];
 
 end
 
